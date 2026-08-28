@@ -1,0 +1,26 @@
+{
+  "name": "edutranscribe-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.9.0",
+      "onFail": "download"
+    }
+  },
+  "type": "module",
+  "dependencies": {
+    "fastify": "^5.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0"
+  }
+}
