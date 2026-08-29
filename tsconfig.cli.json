@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/config/*": ["src/config/*"],
+      "@/config/db/*": ["src/config/db/*"]
+    }
+  },
+  "include": ["src/lib/auth.ts"]
+}
