@@ -1,15 +1,23 @@
 import Fastify from "fastify";
 import type { FastifyRequest, FastifyReply } from "fastify";
-import {
-  serializerCompiler,
-  validatorCompiler,
-} from "fastify-type-provider-zod";
+import authPlugin from "@/plugins/auth.plugin";
+
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "@/lib/auth";
 import subjectRoutes from "@/routes/subject.route";
 
-const app = Fastify();
+const app = Fastify({
+  logger: true,
+});
 
+app.register(authPlugin);
+
+app.get("/api/health", (req: FastifyRequest, res: FastifyReply) => {
+  res.code(200).send({
+    status: "ok",
+    timestamp: new Date().toISOString().split("T")[0],
+  });
+});
 // Register authentication endpoint
 app.route({
   method: ["GET", "POST"],
@@ -46,8 +54,14 @@ app.route({
   },
 });
 
-app.register(subjectRoutes, { prefix: "/subjects" });
+app.register(subjectRoutes, { prefix: "/api/subjects" });
 
-app.listen({ port: 3000 }, () => {
-  console.log("Server running on http://localhost:3000");
-});
+app
+  .listen({ port: 3000, host: "0.0.0.0" })
+  .then(() => {
+    console.log("Server running on http://localhost:3000");
+  })
+  .catch((err) => {
+    app.log.error(err);
+    process.exit(1);
+  });
