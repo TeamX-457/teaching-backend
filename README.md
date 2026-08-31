@@ -66,11 +66,25 @@ The server will start at `http://localhost:3000`.
 
 ## 📡 API Reference & Route Documentation
 
-### 1. Authentication Routes (`/api/auth/*`)
+### 1. Health Check
+
+#### 1.1 Health Check
+- **Endpoint**: `GET /api/health`
+- **Response** (200 OK):
+  ```json
+  {
+    "status": "ok",
+    "timestamp": "2026-08-31"
+  }
+  ```
+
+---
+
+### 2. Authentication Routes (`/api/auth/*`)
 
 Handled automatically by **Better-Auth**. The `role` field (`"educator"` | `"student"`) is supported on sign-up.
 
-#### 1.1 Sign Up with Email
+#### 2.1 Sign Up with Email
 - **Endpoint**: `POST /api/auth/sign-up/email`
 - **Headers**: `Content-Type: application/json`
 - **Request Body**:
@@ -104,7 +118,7 @@ Handled automatically by **Better-Auth**. The `role` field (`"educator"` | `"stu
   }
   ```
 
-#### 1.2 Sign In with Email
+#### 2.2 Sign In with Email
 - **Endpoint**: `POST /api/auth/sign-in/email`
 - **Headers**: `Content-Type: application/json`
 - **Request Body**:
@@ -116,34 +130,54 @@ Handled automatically by **Better-Auth**. The `role` field (`"educator"` | `"stu
   ```
 - **Response** (200 OK): Returns user details and session token / sets auth cookies.
 
-#### 1.3 Get Current Session
+#### 2.3 Get Current Session
 - **Endpoint**: `GET /api/auth/get-session`
 - **Headers**: `Cookie` or `Authorization` header containing session token.
 - **Response** (200 OK): Returns active session and logged-in user object.
 
-#### 1.4 Sign Out
+#### 2.4 Sign Out
 - **Endpoint**: `POST /api/auth/sign-out`
 - **Response** (200 OK): Invalidates current session and clears authentication cookies.
 
 ---
 
-### 2. Subject Routes (`/subjects`)
+### 3. Subject Routes (`/api/subjects`)
 
-#### 2.1 Get All Subjects
-- **Endpoint**: `GET /subjects`
+#### 3.1 Get All Subjects (Paginated)
+- **Endpoint**: `GET /api/subjects`
+- **Auth**: None
+- **Request Body**:
+  ```json
+  {
+    "page": 1,
+    "limit": 10
+  }
+  ```
 - **Response** (200 OK):
   ```json
-  [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Mathematics",
-      "slug": "mathematics"
-    }
-  ]
+  {
+    "success": true,
+    "data": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "Mathematics",
+        "slug": "/Mathematics"
+      }
+    ]
+  }
+  ```
+- **Response** (200 OK — empty):
+  ```json
+  {
+    "success": false,
+    "message": "No subjects exist. Create one",
+    "data": null
+  }
   ```
 
-#### 2.2 Create a Subject
-- **Endpoint**: `POST /subjects`
+#### 3.2 Create a Subject
+- **Endpoint**: `POST /api/subjects/new`
+- **Auth**: Educator only (`authenticate` + `authorize("educator")`)
 - **Headers**: `Content-Type: application/json`
 - **Request Body**:
   ```json
@@ -157,16 +191,109 @@ Handled automatically by **Better-Auth**. The `role` field (`"educator"` | `"stu
   {
     "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "name": "Physics",
-    "slug": "physics"
+    "slug": "/Physics"
   }
   ```
 
-#### 2.3 Search Subjects
-- **Endpoint**: `GET /subjects/search`
+#### 3.3 Search Subjects
+- **Endpoint**: `GET /api/subjects/search`
+- **Auth**: None
 - **Query Parameters**:
-  - `name` *(string, required)*: Search query term.
-- **Example**: `GET /subjects/search?name=Math`
-- **Response** (200 OK): Returns matching subjects.
+  - `name` *(string, required)*: Subject name to search for (exact match).
+- **Example**: `GET /api/subjects/search?name=Math`
+- **Response** (200 OK): Returns array of matching subjects.
+
+---
+
+### 4. Lesson Routes (`/api/lessons`)
+
+#### 4.1 Get All Lessons (Paginated)
+- **Endpoint**: `GET /api/lessons`
+- **Auth**: Any authenticated user (`authenticate`)
+- **Request Body**:
+  ```json
+  {
+    "page": 1,
+    "limit": 10,
+    "subjectId": "optional-uuid",
+    "status": "processing"
+  }
+  ```
+  *(Note: `subjectId` and `status` are optional filters. `status` can be `"processing"`, `"ready"`, or `"failed"`)*
+- **Response** (200 OK):
+  ```json
+  {
+    "lessons": {
+      "lessons": [
+        {
+          "id": "uuid",
+          "title": "Introduction to Algebra",
+          "subjectName": "Mathematics",
+          "educatorName": "Jane Doe",
+          "status": "processing",
+          "totalPages": 0,
+          "createdAt": "2026-08-31T12:00:00.000Z"
+        }
+      ],
+      "pagination": {
+        "page": 1,
+        "limit": 10,
+        "total": 42
+      }
+    }
+  }
+  ```
+
+#### 4.2 Create a Lesson
+- **Endpoint**: `POST /api/lessons/new`
+- **Auth**: Educator only (`authenticate` + `authorize("educator")`)
+- **Headers**: `Content-Type: application/json`
+- **Request Body**:
+  ```json
+  {
+    "title": "Introduction to Algebra",
+    "subjectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "educatorId": "usr_12345"
+  }
+  ```
+- **Response** (201 Created):
+  ```json
+  {
+    "newLesson": {
+      "id": "uuid",
+      "title": "Introduction to Algebra",
+      "subjectId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "educatorId": "usr_12345",
+      "status": "processing",
+      "totalPages": 0,
+      "processedPages": 0,
+      "pdfUrl": null,
+      "createdAt": "2026-08-31T12:00:00.000Z"
+    }
+  }
+  ```
+
+#### 4.3 Get Lesson by ID
+- **Endpoint**: `GET /api/lessons/:id`
+- **Auth**: Any authenticated user (`authenticate`)
+- **Response** (200 OK):
+  ```json
+  {
+    "lessons": [
+      {
+        "id": "uuid",
+        "title": "Introduction to Algebra",
+        "subjectId": "...",
+        "educatorId": "...",
+        "status": "processing",
+        "totalPages": 0,
+        "processedPages": 0,
+        "pdfUrl": null,
+        "createdAt": "2026-08-31T12:00:00.000Z"
+      }
+    ]
+  }
+  ```
 
 ---
 
@@ -181,7 +308,7 @@ Handled automatically by **Better-Auth**. The `role` field (`"educator"` | `"stu
 │   │   └── db             # Database client connection
 │   ├── controllers        # Request handlers & logic
 │   ├── lib                # Better-Auth initialization & setup
-│   ├── middleware         # Fastify custom middlewares
+│   ├── plugins            # Fastify plugins (auth decorators)
 │   ├── models             # Drizzle PostgreSQL tables & schema
 │   ├── routes             # API route declarations
 │   ├── services           # Business logic & DB queries

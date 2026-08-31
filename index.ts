@@ -5,6 +5,7 @@ import authPlugin from "@/plugins/auth.plugin";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "@/lib/auth";
 import subjectRoutes from "@/routes/subject.route";
+import lessonRoutes from "@/routes/lesson.route";
 
 const app = Fastify({
   logger: true,
@@ -55,6 +56,7 @@ app.route({
 });
 
 app.register(subjectRoutes, { prefix: "/api/subjects" });
+app.register(lessonRoutes, { prefix: "/api/lessons" });
 
 app
   .listen({ port: 3000, host: "0.0.0.0" })

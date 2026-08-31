@@ -9,16 +9,20 @@ export const subjectController = {
     try {
       const { name, userId } = req.body;
 
-      const result = subjectService.createSubject(name, userId);
+      const result = await subjectService.createSubject(name, userId);
       return res.code(201).send(result);
     } catch (error: unknown) {
       console.error(error);
     }
   },
 
-  async getAllSubjects(req: FastifyRequest, res: FastifyReply) {
+  async getAllSubjects(
+    req: FastifyRequest<{ Body: { page: number; limit: number } }>,
+    res: FastifyReply,
+  ) {
     try {
-      const subjects = subjectService.getSubjects();
+      const { page, limit } = req.body;
+      const subjects = await subjectService.getSubjects(page, limit);
       return res.code(200).send(subjects);
     } catch (error) {
       console.error(error);
@@ -31,7 +35,7 @@ export const subjectController = {
   ) {
     try {
       const { name } = req.query;
-      const subject = subjectService.searchSubject(name);
+      const subject = await subjectService.searchSubject(name);
       return res.code(200).send(subject);
     } catch (err) {
       console.error(err);

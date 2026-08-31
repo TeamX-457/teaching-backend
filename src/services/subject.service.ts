@@ -29,15 +29,24 @@ export const subjectService = {
     return newSubject;
   },
 
-  async getSubjects() {
-    const allSubjects = await db.select().from(subjects);
-    if (allSubjects.length <= 0) {
+  async getSubjects(page: number = 1, limit: number = 10) {
+    const offset = (page - 1) * 10;
+
+    const allSubjects = await db
+      .select()
+      .from(subjects)
+      .limit(limit)
+      .offset(offset);
+
+    if (!allSubjects.length) {
       return {
-        message: "No subjects created",
+        success: false,
+        message: "No subjects exist. Create one",
+        data: null,
       };
     }
 
-    return allSubjects;
+    return { success: true, data: allSubjects };
   },
 
   async searchSubject(name: string) {
