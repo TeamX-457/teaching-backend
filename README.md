@@ -11,7 +11,6 @@ Backend service for EduTranscribe, built with **Fastify**, **TypeScript**, **Bet
 - **Authentication**: [Better-Auth](https://www.better-auth.com/)
 - **Database ORM**: [Drizzle ORM](https://orm.drizzle.team/)
 - **Database Driver**: [@neondatabase/serverless](https://neon.tech/) (PostgreSQL)
-- **Validation**: [Zod](https://zod.dev/) & `fastify-type-provider-zod`
 
 ---
 
