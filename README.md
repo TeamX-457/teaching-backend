@@ -1,6 +1,6 @@
 # EduTranscribe Backend
 
-Backend service for EduTranscribe, built with **Fastify**, **TypeScript**, **Better-Auth**, **Drizzle ORM**, **Neon PostgreSQL**, and **Zod**.
+Backend service for EduTranscribe, built with **Fastify**, **TypeScript**, **Better-Auth**, **Drizzle ORM** and  **Neon PostgreSQL**.
 
 ---
 
