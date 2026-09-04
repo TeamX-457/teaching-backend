@@ -15,6 +15,11 @@ export const lessonService = {
       })
       .returning();
 
+    // newLesson = {
+    // title: titlem
+    // subjectId:
+    // educatorId
+    // status}
     return newLesson;
   },
   async getLesson(id: string) {
