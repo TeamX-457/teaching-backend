@@ -6,12 +6,14 @@ import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "@/lib/auth";
 import subjectRoutes from "@/routes/subject.route";
 import lessonRoutes from "@/routes/lesson.route";
+import cors from "@fastify/cors";
 
-export const buildApp = (opts = {}) => {
+export const buildApp = async (opts = {}) => {
   const app = Fastify({
     logger: true,
     ...opts,
   });
+  await app.register(cors);
 
   app.register(authPlugin);
 
