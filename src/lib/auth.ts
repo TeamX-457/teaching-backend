@@ -18,6 +18,8 @@ export const auth = betterAuth({
       },
     },
   },
+  // Trust any origin for now; restrict once the frontend URL is known.
+  trustedOrigins: async (request) => [request?.headers.get("origin")],
   emailAndPassword: {
     enabled: true,
   },

@@ -13,7 +13,13 @@ export const buildApp = async (opts = {}) => {
     logger: true,
     ...opts,
   });
-  await app.register(cors);
+  // Allow all origins for now (reflects the request origin so credentialed
+// requests work). Restrict to the frontend URL(s) once it exists.
+  await app.register(cors, {
+    origin: true,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  });
 
   app.register(authPlugin);
 
