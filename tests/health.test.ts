@@ -2,11 +2,11 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { buildApp } from "../src/app";
 
 describe("Health Endpoint", () => {
-  let app: ReturnType<typeof buildApp>;
+  let app: Awaited<ReturnType<typeof buildApp>>;
 
   beforeAll(async () => {
     // Disable logger in test environment for cleaner output
-    app = buildApp({ logger: false });
+    app = await buildApp({ logger: false });
     await app.ready();
   });
 

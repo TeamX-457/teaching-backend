@@ -2,10 +2,10 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { buildApp } from "@/app";
 
 describe("Login endpoint", () => {
-  let app: ReturnType<typeof buildApp>;
+  let app: Awaited<ReturnType<typeof buildApp>>;
 
   beforeAll(async () => {
-    app = buildApp({ logger: false });
+    app = await buildApp({ logger: false });
     await app.ready();
   });
 
