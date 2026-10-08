@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice Verse: Past sessions</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main>
+  <p><a href="/" style="color:var(--muted)">&larr; Voice Verse</a></p>
+  <h1>Past sessions</h1>
+  <p class="tag">Saved only on this device. Audio is never stored.</p>
+  <div id="list"></div>
+  <div id="detail" class="hidden"></div>
+  <button id="clearAll" class="ghost danger hidden">Delete all sessions</button>
+</main>
+<script src="/common.js"></script>
+<script>
+  let cfg;
+  const nameOf = (c) => (langByCode(cfg, c) || { name: c }).name;
+
+  function renderList() {
+    const all = history.all();
+    $("detail").classList.add("hidden");
+    $("list").classList.remove("hidden");
+    $("clearAll").classList.toggle("hidden", !all.length);
+    if (!all.length) {
+      $("list").innerHTML = '<div class="card"><p>No sessions yet. Sessions you listen to are saved here.</p><a class="btn" href="/">Start Listening</a></div>';
+      return;
+    }
+    $("list").innerHTML = all.map((s) => `
+      <div class="card">
+        <h2>${escapeHtml(s.title)}</h2>
+        <p class="status">${new Date(s.startedAt || Date.now()).toLocaleString()} · ${formatDuration(s.durationSec || 0)} · ${escapeHtml(nameOf(s.in))} → ${escapeHtml(nameOf(s.out))} · ${s.segments.length} segments${s.status !== "completed" ? " · not finished" : ""}</p>
+        <button data-open="${s.id}">Open</button>
+        <button data-del="${s.id}" class="ghost">Delete</button>
+      </div>`).join("");
+  }
+
+  function renderDetail(id) {
+    const s = history.get(id);
+    if (!s) return renderList();
+    $("list").classList.add("hidden");
+    $("clearAll").classList.add("hidden");
+    const d = $("detail");
+    d.classList.remove("hidden");
+    d.innerHTML = `<button class="ghost" id="back">&larr; All sessions</button>
+      <div class="card"><h2>${escapeHtml(s.title)}</h2>
+      <p class="status">${formatDuration(s.durationSec || 0)} · ${escapeHtml(nameOf(s.in))} → ${escapeHtml(nameOf(s.out))}</p></div>
+      <div class="log">${s.segments.map((g) => `<div class="seg"><time>${new Date(g.at).toLocaleTimeString()}</time>
+        <p>${escapeHtml(g.original)}</p>${g.translation ? `<p class="out">${escapeHtml(g.translation)}</p>` : ""}</div>`).join("") || "<p>No speech was captured.</p>"}</div>`;
+    $("back").addEventListener("click", renderList);
+  }
+
+  document.addEventListener("click", (e) => {
+    const o = e.target.dataset && e.target.dataset.open, del = e.target.dataset && e.target.dataset.del;
+    if (o) renderDetail(o);
+    if (del && confirm("Delete this session from this device?")) { history.remove(del); renderList(); }
+  });
+  $("clearAll").addEventListener("click", () => { if (confirm("Delete ALL saved sessions from this device?")) { history.clear(); renderList(); } });
+
+  loadLanguages().then((c) => {
+    cfg = c;
+    const open = new URLSearchParams(location.search).get("open");
+    open ? renderDetail(open) : renderList();
+  });
+</script>
+</body>
+</html>

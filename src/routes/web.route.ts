@@ -9,7 +9,10 @@ const FILES: Record<string, { file: string; type: string }> = {
   "/": { file: "index.html", type: "text/html; charset=utf-8" },
   "/host": { file: "host.html", type: "text/html; charset=utf-8" },
   "/listen": { file: "listen.html", type: "text/html; charset=utf-8" },
+  "/listening": { file: "listening.html", type: "text/html; charset=utf-8" },
+  "/history": { file: "history.html", type: "text/html; charset=utf-8" },
   "/app.css": { file: "app.css", type: "text/css; charset=utf-8" },
+  "/listening.js": { file: "listening.js", type: "text/javascript; charset=utf-8" },
   "/common.js": { file: "common.js", type: "text/javascript; charset=utf-8" },
 };
 

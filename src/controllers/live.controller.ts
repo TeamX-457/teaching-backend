@@ -1,3 +1,4 @@
+import { checkTranslationPair, getLanguage } from "@/config/languages";
 import { auth } from "@/lib/auth";
 import { liveService } from "@/services/live.service";
 import { translate } from "@/services/translation.service";
@@ -136,14 +137,32 @@ export const liveController = {
     const rows = await liveService.getCaptions(session.id, after);
 
     const target = lang && lang !== session.sourceLang ? lang : undefined;
+    if (target) {
+      const pair = checkTranslationPair(session.sourceLang, target);
+      if (!pair.ok) {
+        return res.code(400).send({ error: pair.message, code: pair.code });
+      }
+    }
     const glossary = target
       ? await liveService.getGlossary(session.sourceLang, target)
       : [];
+    const names = target
+      ? {
+          source: getLanguage(session.sourceLang)!.name,
+          target: getLanguage(target)!.name,
+        }
+      : undefined;
 
     const captions = await Promise.all(
       rows.map(async (row) => {
         if (!target) return { ...row, translatedText: null, translated: false };
-        const t = await translate(row.text, session.sourceLang, target, glossary);
+        const t = await translate(
+          row.text,
+          session.sourceLang,
+          target,
+          glossary,
+          names,
+        );
         return {
           ...row,
           translatedText: t.translated ? t.text : null,

@@ -350,3 +350,13 @@ Without `TRANSLATE_URL`, translation uses the glossary only. Ibibio has little m
 | GET | `/stats` | educator | Pilot numbers: sessions, listeners, captions, average rating |
 
 Apply the new tables with `bunx drizzle-kit migrate` (or `push`).
+
+### Solo listening mode (no speaker needed)
+`/` → choose input/output language → **Start Listening** (`/listening`): the phone's microphone is transcribed in the browser, each sentence is translated through `POST /api/translate`, shown as *what the speaker said* vs *translation*, optionally spoken aloud, and saved to **Past sessions** (`/history`) on the device only. No raw audio is stored anywhere.
+
+- `GET /api/languages`: language config (`src/config/languages.ts`, add a language there only).
+- `POST /api/translate`: `{ text, source, target }` (rate-limited 60/min per client).
+- Translation providers, first configured wins, glossary is the fallback:
+  - **LLM** (e.g. an Ibibio-capable model behind an OpenAI-compatible API): `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`
+  - **LibreTranslate-compatible**: `TRANSLATE_URL`, `TRANSLATE_API_KEY`
+- Ibibio speech recognition and speech output are marked unsupported in the config until a provider exists, so the UI says so instead of faking it.

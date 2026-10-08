@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice Verse: Listening</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main>
+  <p class="row" style="justify-content:space-between"><a href="/" style="color:var(--muted)">&larr; Voice Verse</a>
+    <span id="state" class="pill" role="status" aria-live="polite">Ready</span></p>
+  <p class="tag" id="meta"></p>
+
+  <div class="live-panel">
+    <div class="live-label">What the speaker said</div>
+    <div id="original" class="live-text" aria-live="polite">Press Start to begin listening.</div>
+    <div id="translationBox">
+      <div class="live-label out">Translation: <span id="outName"></span></div>
+      <div id="translation" class="live-text out" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <p id="message" class="status" role="alert"></p>
+
+  <div class="controls">
+    <button id="startBtn" class="big">Start</button>
+    <button id="pauseBtn" class="ghost big" disabled>Pause</button>
+    <button id="stopBtn" class="danger big" disabled>Stop &amp; save</button>
+  </div>
+
+  <section class="card">
+    <div class="row">
+      <div>
+        <label for="size">Text size</label>
+        <select id="size">
+          <option value="1.4rem">Small</option>
+          <option value="2rem" selected>Medium</option>
+          <option value="2.8rem">Large</option>
+          <option value="3.6rem">Extra large</option>
+        </select>
+      </div>
+      <div>
+        <label><input type="checkbox" id="audioOn" style="width:auto"> Speak the translation aloud</label>
+        <div class="row" style="margin-top:6px">
+          <button id="ttsPlay" class="ghost" disabled>Play</button>
+          <button id="ttsPause" class="ghost" disabled>Pause</button>
+          <button id="ttsStop" class="ghost" disabled>Stop</button>
+        </div>
+        <p id="audioNote" class="status"></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Transcript</h2>
+    <div id="log" class="log"><p class="status">Nothing yet.</p></div>
+  </section>
+</main>
+<script src="/common.js"></script>
+<script src="/listening.js"></script>
+</body>
+</html>

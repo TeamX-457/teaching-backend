@@ -45,3 +45,30 @@ describe("join codes", () => {
     expect(normalizeJoinCode("  k7m2qx ")).toBe("K7M2QX");
   });
 });
+
+import { checkTranslationPair, getLanguage } from "@/config/languages";
+import { createRateLimiter } from "@/utils/rate-limit";
+
+describe("language config", () => {
+  it("supports en and ibb, and rejects unknown or identical pairs", () => {
+    expect(getLanguage("IBB")?.name).toBe("Ibibio");
+    expect(checkTranslationPair("en", "ibb").ok).toBe(true);
+    expect(checkTranslationPair("en", "xx")).toMatchObject({ ok: false, code: "UNSUPPORTED_LANGUAGE" });
+    expect(checkTranslationPair("en", "en")).toMatchObject({ ok: false, code: "SAME_LANGUAGE" });
+  });
+
+  it("does not claim Ibibio speech recognition", () => {
+    expect(getLanguage("ibb")?.speechRecognition.supported).toBe(false);
+  });
+});
+
+describe("rate limiter", () => {
+  it("blocks after max hits and resets after the window", () => {
+    const allow = createRateLimiter(2, 1000);
+    expect(allow("a", 0)).toBe(true);
+    expect(allow("a", 1)).toBe(true);
+    expect(allow("a", 2)).toBe(false);
+    expect(allow("b", 2)).toBe(true);
+    expect(allow("a", 1001)).toBe(true);
+  });
+});
