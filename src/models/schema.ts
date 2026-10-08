@@ -12,6 +12,17 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { relations } from "drizzle-orm/_relations";
+export const venueTypeEnum = pgEnum("venue_type", [
+  "classroom",
+  "conference",
+  "church",
+  "town_hall",
+  "other",
+]);
+export const liveSessionStatusEnum = pgEnum("live_session_status", [
+  "live",
+  "ended",
+]);
 export const userRoleEnum = pgEnum("user_role", ["educator", "student"]);
 export const lessonStatusEnum = pgEnum("lesson_status", [
   "processing",
@@ -149,8 +160,77 @@ export const lessonPages = pgTable("lesson_pages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ---- Voice Verse: live captioning ------------------------------------------
+
+export const liveSessions = pgTable(
+  "live_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    // Short code listeners type in (or scan from a QR) to join without an account.
+    code: text("code").notNull().unique(),
+    title: text("title").notNull(),
+    hostId: text("host_id")
+      .references(() => user.id)
+      .notNull(),
+    venueType: venueTypeEnum("venue_type").default("classroom").notNull(),
+    sourceLang: text("source_lang").default("en").notNull(),
+    status: liveSessionStatusEnum("status").default("live").notNull(),
+    listenerCount: integer("listener_count").default(0).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    endedAt: timestamp("ended_at"),
+  },
+  (table) => [index("live_sessions_hostId_idx").on(table.hostId)],
+);
+
+export const captions = pgTable(
+  "captions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sessionId: uuid("session_id")
+      .references(() => liveSessions.id, { onDelete: "cascade" })
+      .notNull(),
+    seq: integer("seq").notNull(),
+    text: text("text").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("captions_session_seq_uidx").on(table.sessionId, table.seq),
+  ],
+);
+
+// Editable word/phrase dictionary used by the translation service.
+export const glossaryTerms = pgTable(
+  "glossary_terms",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sourceLang: text("source_lang").default("en").notNull(),
+    targetLang: text("target_lang").notNull(),
+    sourceText: text("source_text").notNull(),
+    targetText: text("target_text").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("glossary_lang_source_uidx").on(
+      table.sourceLang,
+      table.targetLang,
+      table.sourceText,
+    ),
+  ],
+);
+
+export const feedback = pgTable("feedback", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sessionId: uuid("session_id").references(() => liveSessions.id, {
+    onDelete: "set null",
+  }),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 export type User = typeof user.$inferSelect
 export type Subject = typeof subjects.$inferSelect
 export type Lesson = typeof lessons.$inferSelect
 export type Session = typeof session.$inferSelect
+export type LiveSession = typeof liveSessions.$inferSelect
+export type Caption = typeof captions.$inferSelect

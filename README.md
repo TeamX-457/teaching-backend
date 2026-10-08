@@ -313,3 +313,40 @@ Handled automatically by **Better-Auth**. The `role` field (`"educator"` | `"stu
 │   ├── services           # Business logic & DB queries
 │   └── types              # TypeScript type definitions
 ```
+
+---
+
+## 🎙️ Voice Verse: live captions and translation (MVP)
+
+Voice Verse turns a speaker's voice into live subtitles on listeners' phones, with Ibibio support through an editable glossary. It is served by this same backend.
+
+### Web app
+| Page | Purpose |
+|------|---------|
+| `/` | Join a session with a code |
+| `/host` | Speaker console: sign in as an educator, create a session, speak (browser Web Speech API, use Chrome or Edge) |
+| `/listen?code=ABC123` | Listener view: live subtitles, language choice, text size, read aloud, feedback |
+
+### Environment (optional)
+```env
+TRANSLATE_URL=https://libretranslate.example/translate   # LibreTranslate-compatible
+TRANSLATE_API_KEY=
+```
+Without `TRANSLATE_URL`, translation uses the glossary only. Ibibio has little machine-translation support, so add terms with `POST /api/live/glossary` and have a native speaker review them.
+
+### API (`/api/live`)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/sessions` | educator | `{ title, venueType?, sourceLang? }` → session with join `code` |
+| GET | `/sessions/mine` | educator | Your sessions |
+| POST | `/sessions/:code/captions` | host | `{ text }` append a caption |
+| POST | `/sessions/:code/end` | host | End the session |
+| GET | `/sessions/:code` | public | Session info |
+| POST | `/sessions/:code/join` | public | Count a listener |
+| GET | `/sessions/:code/captions?after=0&lang=ibb` | public | Captions after `seq`, translated when possible |
+| POST | `/glossary` | educator | `{ sourceLang?, targetLang, terms: [{ sourceText, targetText }] }` |
+| GET | `/glossary?target=ibb` | public | Glossary terms |
+| POST | `/feedback` | public | `{ code?, rating: 1-5, comment? }` |
+| GET | `/stats` | educator | Pilot numbers: sessions, listeners, captions, average rating |
+
+Apply the new tables with `bunx drizzle-kit migrate` (or `push`).

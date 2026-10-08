@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voice Verse</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<main>
+  <h1>Voice Verse</h1>
+  <p class="tag">Hear it. Read it. Understand it. Live subtitles and translation for classrooms, churches, conferences and town halls, starting with Ibibio.</p>
+
+  <section class="card">
+    <h2>Join a session</h2>
+    <form id="join">
+      <label for="code">Session code</label>
+      <input id="code" name="code" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="e.g. K7M2QX" required>
+      <button type="submit">Join and read live</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Speaking? Start a session</h2>
+    <p class="status">Teachers, pastors and organisers sign in, start a session, and share the code. Listeners need no account.</p>
+    <a class="btn" href="/host">Open speaker console</a>
+  </section>
+</main>
+<script src="/common.js"></script>
+<script>
+  $("join").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const code = $("code").value.trim().toUpperCase();
+    if (code) location.href = "/listen?code=" + encodeURIComponent(code);
+  });
+</script>
+</body>
+</html>
