@@ -40,6 +40,7 @@ type Props = {
   live: boolean;
   showTranslation: boolean;
   translationPending: boolean;
+  translationUnavailable?: boolean | undefined;
   subtitleSize: number;
   title?: string;
   right?: React.ReactNode;
@@ -90,6 +91,10 @@ export function LiveStage(p: Props) {
                   <div className="shimmer h-4 w-11/12 rounded" />
                   <div className="shimmer h-4 w-2/3 rounded" />
                 </div>
+              ) : p.translationUnavailable ? (
+                <p className="text-muted-foreground" style={{ fontSize: `${Math.max(14, p.subtitleSize * 0.7)}px` }}>
+                  We can't translate this yet. The subtitles on the left are the original words.
+                </p>
               ) : (
                 <p className="text-muted-foreground/60" style={{ fontSize: `${Math.max(14, p.subtitleSize * 0.7)}px` }}>
                   Translated text appears here.

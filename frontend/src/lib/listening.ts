@@ -18,8 +18,8 @@ const PROBLEMS: Record<string, Omit<Problem, "key">> = {
   language: { title: "This language can't be recognised here", body: "Choose a different input language.", fatal: true },
   offline: { title: "You're offline", body: "Check your connection. Listening will resume when you're back online.", fatal: false },
   nospeech: { title: "No speech detected", body: "Move closer to the speaker or raise the microphone volume.", fatal: false },
-  translation: { title: "Translation is unavailable right now", body: "Showing the original words. It will retry on the next sentence.", fatal: false },
-  notranslator: { title: "Translation isn't connected yet", body: "Subtitles work. Translated text appears once a translation service is connected.", fatal: false },
+  translation: { title: "Can't translate this right now", body: "The original words are still shown as subtitles. It will try again on the next sentence.", fatal: false },
+  notranslator: { title: "Can't translate yet", body: "Translation isn't available for this language right now. The original words are still shown as subtitles.", fatal: false },
   ratelimit: { title: "Too many requests", body: "Translation will resume in a moment.", fatal: false },
   tts: { title: "Spoken output failed", body: "You can keep reading the text.", fatal: false },
 };

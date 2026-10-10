@@ -23,7 +23,7 @@ function Languages() {
       <PageHeader title="Languages" description="What each language can do today. New languages are added in one place and appear everywhere." />
       {isError && <ProblemBanner title="Can't load languages" body="Check your connection and reload." />}
       {data && !data.translationProviderConfigured && (
-        <div className="mb-6"><ProblemBanner title="Translation service not connected" body="Subtitles work now. Translation between languages starts working as soon as a translation service is connected." /></div>
+        <div className="mb-6"><ProblemBanner title="Translation isn't available yet" body="Subtitles work now. Voice Verse can't translate between languages until a translation service is connected." /></div>
       )}
       {isPending ? <div className="shimmer h-64 rounded-xl" /> : data && (
         <div className="overflow-hidden rounded-xl border bg-card">

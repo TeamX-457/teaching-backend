@@ -88,7 +88,7 @@ function Session({ langs, providerReady }: { langs: NonNullable<ReturnType<typeo
               </Select>
             </div>
             {from !== to && !providerReady && (
-              <p className="rounded-lg bg-secondary px-4 py-3 text-sm text-muted-foreground">Translation isn't connected to a service yet. Subtitles will work; translated text appears once it's connected.</p>
+              <p className="rounded-lg bg-secondary px-4 py-3 text-sm text-muted-foreground">We can't translate into other languages yet. Subtitles will still appear in the language being spoken.</p>
             )}
             <Button size="lg" className="w-full" disabled={!speechSupported() || !canListen(from)} onClick={() => { setBegun(true); L.start(); }}>
               <Mic /> Start listening
@@ -125,6 +125,7 @@ function Session({ langs, providerReady }: { langs: NonNullable<ReturnType<typeo
         live={L.stage === "listening" || L.stage === "speaking" || L.stage === "translating"}
         showTranslation={showTr}
         translationPending={L.pending > 0}
+        translationUnavailable={L.problem?.key === "notranslator" || L.problem?.key === "translation"}
         subtitleSize={size}
       />
 

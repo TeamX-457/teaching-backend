@@ -10,9 +10,10 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
         <Logo />
         <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
-          <a href="#how" className="transition-colors hover:text-foreground">How it works</a>
-          <a href="#use" className="transition-colors hover:text-foreground">Who it's for</a>
-          <a href="#trust" className="transition-colors hover:text-foreground">Accessibility</a>
+          <a href="/#how" className="transition-colors hover:text-foreground">How it works</a>
+          <a href="/about" className="transition-colors hover:text-foreground">About</a>
+          <a href="/accessibility" className="transition-colors hover:text-foreground">Accessibility</a>
+          <a href="/contact" className="transition-colors hover:text-foreground">Contact</a>
         </nav>
         <div className="flex items-center gap-2">
           {user ? (
@@ -38,9 +39,9 @@ export function SiteFooter() {
           <p className="mt-4 max-w-xs text-sm text-muted-foreground">Real-time speech, subtitles and translation for the places where people gather.</p>
         </div>
         {[
-          ["Product", [["Start listening", "/app/listen"], ["Languages", "/app/languages"], ["Help centre", "/app/help"]]],
+          ["Product", [["Start listening", "/app/listen"], ["Join with a code", "/join"], ["Languages", "/app/languages"], ["Help centre", "/app/help"]]],
           ["Account", [["Sign in", "/login"], ["Create account", "/signup"], ["Reset password", "/forgot-password"]]],
-          ["Company", [["Accessibility", "/"], ["Privacy", "/"], ["Terms", "/"]]],
+          ["Company", [["About", "/about"], ["Contact", "/contact"], ["Accessibility", "/accessibility"], ["Privacy", "/privacy"], ["Terms", "/terms"]]],
         ].map(([h, links]) => (
           <div key={h as string}>
             <p className="text-sm font-medium">{h as string}</p>

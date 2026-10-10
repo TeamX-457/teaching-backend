@@ -228,6 +228,15 @@ export const feedback = pgTable("feedback", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const contactMessages = pgTable("contact_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  topic: text("topic").notNull(),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type User = typeof user.$inferSelect
 export type Subject = typeof subjects.$inferSelect
 export type Lesson = typeof lessons.$inferSelect

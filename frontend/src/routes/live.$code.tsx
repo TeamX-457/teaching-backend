@@ -98,12 +98,12 @@ function Viewer() {
           <p className="mb-5 text-sm text-muted-foreground">{info.hostName ? `Hosted by ${info.hostName}` : "Live session"}</p>
           <LiveStage stage={stage} title="Live" fromName={langs.find((l) => l.code === info.sourceLang)?.name ?? info.sourceLang} toName={toCfg?.name ?? lang}
             original={last?.text ?? ""} translated={translating ? last?.translatedText ?? "" : ""} previousOriginal={prev?.text} previousTranslated={translating ? prev?.translatedText ?? undefined : undefined}
-            live={status === "live" && !offline} showTranslation={translating} translationPending={false} subtitleSize={size} />
+            live={status === "live" && !offline} showTranslation={translating} translationPending={false} translationUnavailable={translating && caps.length > 0 && !caps.some((c) => c.translated)} subtitleSize={size} />
 
           {offline && <div className="mt-4"><ProblemBanner title="Reconnecting…" body="We lost the connection. Captions will continue when it returns." /></div>}
           {status === "ended" && <p className="mt-4 text-sm text-muted-foreground">The speaker has ended this session.</p>}
           {translating && caps.length > 0 && !caps.some((c) => c.translated) && (
-            <div className="mt-4"><ProblemBanner title="Translation isn't available yet" body={`Showing the original words. ${toCfg?.name ?? "This language"} appears once translation is connected.`} /></div>
+            <div className="mt-4"><ProblemBanner title="Can't translate yet" body={`We can't translate into ${toCfg?.name ?? "this language"} right now. Showing the original words.`} /></div>
           )}
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">

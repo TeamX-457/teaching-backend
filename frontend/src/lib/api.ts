@@ -81,6 +81,9 @@ export const api = {
     signOut: () => request<unknown>("/api/auth/sign-out", { method: "POST", body: {} }),
   },
 
+  contact: (b: { name: string; email: string; topic: string; message: string; website?: string | undefined }) =>
+    request<{ ok: boolean }>("/api/contact", { method: "POST", body: b }),
+
   live: {
     create: (b: { title: string; venueType: VenueType; sourceLang: string }) =>
       request<{ session: LiveSession }>("/api/live/sessions", { method: "POST", body: b }),
