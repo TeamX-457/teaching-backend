@@ -1,10 +1,5 @@
 {
-  "bunVersion": "1.x",
-  "functions": {
-    "api/index.ts": {
-      "includeFiles": "tsconfig.json",
-      "maxDuration": 30
-    }
-  },
+  "buildCommand": "bun build serverless/entry.ts --target=node --outfile=api/index.js",
+  "functions": { "api/index.js": { "maxDuration": 30 } },
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }
