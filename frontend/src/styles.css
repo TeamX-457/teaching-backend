@@ -270,3 +270,16 @@ html.reduce-motion .reveal { opacity: 1; transform: none; }
 html.reduce-motion .words .w, html.reduce-motion .marquee-track, html.reduce-motion .arc, html.reduce-motion .photo-duo img, html.reduce-motion .dot-light { animation: none !important; }
 html.reduce-motion .story-layer { transition: none; }
 html.reduce-motion .draw { stroke-dashoffset: 0; }
+/* ---------- Landing: floor plans, seats, focus slider ---------- */
+.plan .seat-g { transition: transform 1000ms var(--ease-overshoot); }
+.plan .stage { transition: transform 900ms var(--ease-overshoot); }
+.plan .seat { fill: color-mix(in oklab, var(--foreground) 16%, transparent); }
+@keyframes vv-seat-a { 0% { fill: color-mix(in oklab, var(--foreground) 16%, transparent); } 55% { fill: var(--signal); transform: scale(1.35); } 100% { fill: var(--primary); transform: scale(1); } }
+@keyframes vv-seat-b { 0% { fill: color-mix(in oklab, var(--foreground) 16%, transparent); } 55% { fill: var(--signal); transform: scale(1.35); } 100% { fill: var(--primary); transform: scale(1); } }
+.plan .seat { transform-box: fill-box; transform-origin: center; animation-duration: 1.5s; animation-fill-mode: both; animation-timing-function: var(--ease-overshoot); animation-delay: calc(var(--i, 0) * 28ms + 250ms); }
+.plan[data-flip="0"] .seat { animation-name: vv-seat-a; }
+.plan[data-flip="1"] .seat { animation-name: vv-seat-b; }
+input[type="range"]::-webkit-slider-thumb { appearance: none; height: 22px; width: 22px; border-radius: 999px; background: var(--primary); border: 3px solid var(--background); box-shadow: var(--shadow-lift-v); }
+input[type="range"]::-moz-range-thumb { height: 18px; width: 18px; border-radius: 999px; background: var(--primary); border: 3px solid var(--background); }
+@media (prefers-reduced-motion: reduce) { .plan .seat { animation: none !important; fill: var(--primary); } .plan .seat-g, .plan .stage { transition: none; } }
+html.reduce-motion .plan .seat { animation: none !important; fill: var(--primary); }
