@@ -1,0 +1,10 @@
+{
+  "bunVersion": "1.x",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "tsconfig.json",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
+}

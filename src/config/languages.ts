@@ -18,6 +18,25 @@ export const LANGUAGES: LanguageConfig[] = [
     textToSpeech: { supported: true, locale: "en-NG" },
   },
   {
+    code: "fr",
+    name: "French",
+    speechRecognition: { supported: true, locale: "fr-FR" },
+    translation: true,
+    textToSpeech: { supported: true, locale: "fr-FR" },
+  },
+  {
+    code: "es",
+    name: "Spanish",
+    speechRecognition: { supported: true, locale: "es-ES" },
+    translation: true,
+    textToSpeech: { supported: true, locale: "es-ES" },
+  },
+  // Translation into the languages below needs an LLM/HTTP provider; browsers
+  // cannot recognise or speak them reliably yet.
+  { code: "yo", name: "Yoruba", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: false } },
+  { code: "ha", name: "Hausa", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: false } },
+  { code: "ig", name: "Igbo", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: false } },
+  {
     code: "ibb",
     name: "Ibibio",
     // Browsers and mainstream engines do not recognise or speak Ibibio yet.

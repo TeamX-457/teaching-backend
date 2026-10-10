@@ -8,7 +8,6 @@ import subjectRoutes from "@/routes/subject.route";
 import lessonRoutes from "@/routes/lesson.route";
 import liveRoutes from "@/routes/live.route";
 import translateRoutes from "@/routes/translate.route";
-import webRoutes from "@/routes/web.route";
 import cors from "@fastify/cors";
 
 export const buildApp = async (opts = {}) => {
@@ -72,7 +71,6 @@ export const buildApp = async (opts = {}) => {
   app.register(lessonRoutes, { prefix: "/api/lessons" });
   app.register(liveRoutes, { prefix: "/api/live" });
   app.register(translateRoutes, { prefix: "/api" });
-  app.register(webRoutes);
 
   return app;
 };
