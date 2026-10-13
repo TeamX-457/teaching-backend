@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { translateWithGlossary } from "@/services/translation.service";
+import { translate, translateWithGlossary } from "@/services/translation.service";
 import { generateJoinCode, normalizeJoinCode } from "@/utils/join-code";
 
 describe("translateWithGlossary", () => {
@@ -31,6 +31,28 @@ describe("translateWithGlossary", () => {
       { sourceText: "2+2", targetText: "four" },
     ]);
     expect(r.text).toBe("what is four?");
+  });
+});
+
+describe("USEM translation", () => {
+  it("uses the documented text request and translation response", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestUrl = "";
+    let requestBody = "";
+    globalThis.fetch = (async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body);
+      return Response.json({ translation: "Ibibio translation" });
+    }) as typeof fetch;
+
+    try {
+      const result = await translate("Please open the door.", "en", "ibb", []);
+      expect(requestUrl).toBe("https://ruachhakodesh9331--usem-nmt-translator-web.modal.run/translate");
+      expect(JSON.parse(requestBody)).toEqual({ text: "Please open the door." });
+      expect(result).toEqual({ text: "Ibibio translation", translated: true, engine: "usem" });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
 

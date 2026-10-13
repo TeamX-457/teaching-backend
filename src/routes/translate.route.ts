@@ -48,7 +48,7 @@ async function translateRoutes(app: FastifyInstance) {
       engine: result.engine,
       reason: result.translated
         ? null
-        : translationProviderConfigured()
+        : translationProviderConfigured(source, target)
           ? "provider_failed"
           : "no_provider",
     };

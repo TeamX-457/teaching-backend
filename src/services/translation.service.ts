@@ -4,8 +4,11 @@ export type TranslationResult = {
   text: string;
   // false when nothing could be translated and the original text is returned
   translated: boolean;
-  engine: "glossary" | "provider" | "llm" | "none";
+  engine: "glossary" | "provider" | "llm" | "usem" | "none";
 };
+
+const USEM_DEFAULT_URL =
+  "https://ruachhakodesh9331--usem-nmt-translator-web.modal.run";
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -131,6 +134,26 @@ export async function translateWithLlm(
   }
 }
 
+/** USEM's translation API translates English text into Ibibio. */
+export async function translateWithUsem(text: string): Promise<TranslationResult | null> {
+  const base = process.env.USEM_TRANSLATION_URL?.trim() || USEM_DEFAULT_URL;
+  try {
+    const res = await fetch(`${base.replace(/\/$/, "")}/translate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(25_000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { translation?: unknown };
+    const out = typeof data.translation === "string" ? data.translation.trim() : "";
+    if (!out) return null;
+    return { text: out, translated: true, engine: "usem" };
+  } catch {
+    return null;
+  }
+}
+
 const cache = new Map<string, TranslationResult>();
 const CACHE_MAX = 2000;
 
@@ -153,6 +176,7 @@ export async function translate(
   if (hit) return hit;
 
   const result =
+    (source === "en" && target === "ibb" ? await translateWithUsem(text) : null) ??
     (await translateWithLlm(text, source, target, glossary, names)) ??
     (await translateWithProvider(text, source, target)) ??
     translateWithGlossary(text, glossary);
@@ -164,8 +188,10 @@ export async function translate(
   return result;
 }
 
-export const translationProviderConfigured = () =>
+export const translationProviderConfigured = (source?: string, target?: string) =>
   Boolean(
+    (source === undefined && target === undefined) ||
+      (source === "en" && target === "ibb") ||
     (process.env.LLM_BASE_URL && process.env.LLM_MODEL) ||
       process.env.TRANSLATE_URL,
   );
