@@ -1,4 +1,9 @@
-frontend
+/frontend
 .env
 .env.*
 node_modules
+/android
+/docs
+*.docx
+/gen-images.mjs
+/audio-samples

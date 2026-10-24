@@ -228,6 +228,74 @@ export const feedback = pgTable("feedback", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const sessionInvites = pgTable(
+  "session_invites",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sessionId: uuid("session_id").references(() => liveSessions.id, { onDelete: "cascade" }).notNull(),
+    // What the host typed (an email or a name), kept for display.
+    identifier: text("identifier").notNull(),
+    invitedUserId: text("invited_user_id").references(() => user.id, { onDelete: "cascade" }),
+    // Lower-cased; lets an invite reach someone who signs up with this email later.
+    invitedEmail: text("invited_email"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("session_invites_session_idx").on(table.sessionId), index("session_invites_email_idx").on(table.invitedEmail)],
+);
+
+// Keys for the public developer API (/v1). Only a SHA-256 hash is stored; the
+// secret itself is shown once, when the key is created.
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+    name: text("name").notNull(),
+    // First characters of the secret. Safe to display so people can tell keys apart.
+    prefix: text("prefix").notNull(),
+    keyHash: text("key_hash").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    lastUsedAt: timestamp("last_used_at"),
+    revokedAt: timestamp("revoked_at"),
+  },
+  (table) => [uniqueIndex("api_keys_hash_idx").on(table.keyHash), index("api_keys_user_idx").on(table.userId)],
+);
+
+// Every payment Voice Verse takes, one row per Paystack transaction. The Paystack account is shared with other
+// products, so `reference` always starts with VOICEVERSE- (see src/services/paystack.naming.ts): that is what
+// separates these payments from the others in the dashboard, in exports and in the profit report.
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    reference: text("reference").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+    email: text("email").notNull(),
+    planId: text("plan_id").notNull(),
+    purpose: text("purpose").notNull(),
+    amountKobo: integer("amount_kobo").notNull(),
+    currency: text("currency").default("NGN").notNull(),
+    // pending -> success | failed; success -> reversed (refunded)
+    status: text("status").default("pending").notNull(),
+    // false for test-mode keys, so test money never gets mixed into the books
+    livemode: boolean("livemode").default(true).notNull(),
+    channel: text("channel"),
+    feesKobo: integer("fees_kobo"),
+    gatewayResponse: text("gateway_response"),
+    paidAt: timestamp("paid_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => /* @__PURE__ */ new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("payments_reference_idx").on(table.reference),
+    index("payments_user_idx").on(table.userId),
+    index("payments_status_idx").on(table.status),
+  ],
+);
+
 export const contactMessages = pgTable("contact_messages", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),

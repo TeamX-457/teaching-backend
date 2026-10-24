@@ -5,3 +5,9 @@ node_modules/
 .vercel
 .env*
 api/index.js
+
+# Generated or local files that are not source
+audio-samples/
+frontend/public/downloads/*.apk
+frontend/.output/
+*.docx

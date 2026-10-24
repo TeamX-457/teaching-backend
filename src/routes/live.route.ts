@@ -20,6 +20,11 @@ async function liveRoutes(app: FastifyInstance) {
   );
   app.post("/glossary", { preHandler: educator }, liveController.upsertGlossary);
   app.get("/stats", { preHandler: educator }, liveController.stats);
+  app.post("/sessions/:code/invites", { preHandler: educator }, liveController.inviteToSession);
+  app.get("/sessions/:code/invites", { preHandler: educator }, liveController.listInvites);
+  app.delete("/sessions/:code/invites/:inviteId", { preHandler: educator }, liveController.removeInvite);
+  // Any signed-in person: sessions they were invited to
+  app.get("/invited", { preHandler: app.authenticate }, liveController.myInvites);
 
   // Public listener endpoints: no account needed, the join code is the access
   app.get("/sessions/:code", liveController.getSession);

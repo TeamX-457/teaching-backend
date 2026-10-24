@@ -4,6 +4,7 @@ import {
   translate,
   translationProviderConfigured,
 } from "@/services/translation.service";
+import { speechConfigured } from "@/services/speech.service";
 import { createRateLimiter } from "@/utils/rate-limit";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -20,7 +21,10 @@ const allow = createRateLimiter(60, 60_000);
 // Prefix: /api
 async function translateRoutes(app: FastifyInstance) {
   app.get("/languages", async () => ({
-    languages: LANGUAGES,
+    // Cloud voices only count as supported while the server can actually make them.
+    languages: LANGUAGES.map((l) =>
+      l.textToSpeech.cloud ? { ...l, textToSpeech: { ...l.textToSpeech, supported: speechConfigured() } } : l,
+    ),
     translationProviderConfigured: translationProviderConfigured(),
   }));
 

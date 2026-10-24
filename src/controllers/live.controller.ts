@@ -1,5 +1,6 @@
 import { checkTranslationPair, getLanguage } from "@/config/languages";
 import { auth } from "@/lib/auth";
+import { invitesService } from "@/services/invites.service";
 import { liveService } from "@/services/live.service";
 import { translate } from "@/services/translation.service";
 import { normalizeJoinCode } from "@/utils/join-code";
@@ -43,6 +44,8 @@ const glossarySchema = z.object({
     .min(1)
     .max(500),
 });
+
+const inviteSchema = z.object({ identifier: z.string().trim().min(2).max(200) });
 
 type CodeParams = { Params: { code: string } };
 
@@ -212,6 +215,42 @@ export const liveController = {
       parsed.data.target,
     );
     return res.send({ terms });
+  },
+
+  // ---- Invitations (host only, except myInvites) --------------------------
+  async inviteToSession(req: FastifyRequest<CodeParams>, res: FastifyReply) {
+    const parsed = inviteSchema.safeParse(req.body);
+    if (!parsed.success) return invalid(res, parsed.error);
+    const hostId = await currentUserId(req);
+    if (!hostId) return res.code(401).send({ error: "Unauthorized" });
+    const session = await liveService.getByCode(normalizeJoinCode(req.params.code));
+    if (!session || session.hostId !== hostId) return res.code(404).send({ error: "Session not found" });
+    const r = await invitesService.invite(session.id, hostId, parsed.data.identifier);
+    if (!r.ok) return res.code(r.code === "DUPLICATE" ? 409 : r.code === "NOT_FOUND" ? 404 : 422).send({ error: r.message, code: r.code });
+    return res.code(201).send({ invite: r.invite });
+  },
+
+  async listInvites(req: FastifyRequest<CodeParams>, res: FastifyReply) {
+    const hostId = await currentUserId(req);
+    if (!hostId) return res.code(401).send({ error: "Unauthorized" });
+    const session = await liveService.getByCode(normalizeJoinCode(req.params.code));
+    if (!session || session.hostId !== hostId) return res.code(404).send({ error: "Session not found" });
+    return res.send({ invites: await invitesService.list(session.id) });
+  },
+
+  async removeInvite(req: FastifyRequest<{ Params: { code: string; inviteId: string } }>, res: FastifyReply) {
+    const hostId = await currentUserId(req);
+    if (!hostId) return res.code(401).send({ error: "Unauthorized" });
+    const session = await liveService.getByCode(normalizeJoinCode(req.params.code));
+    if (!session || session.hostId !== hostId) return res.code(404).send({ error: "Session not found" });
+    const ok = await invitesService.remove(session.id, req.params.inviteId);
+    return ok ? res.send({ ok: true }) : res.code(404).send({ error: "Invitation not found" });
+  },
+
+  async myInvites(req: FastifyRequest, res: FastifyReply) {
+    const s = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+    if (!s) return res.code(401).send({ error: "Unauthorized" });
+    return res.send({ sessions: await invitesService.forUser(s.user.id, s.user.email) });
   },
 
   async stats(_req: FastifyRequest, res: FastifyReply) {

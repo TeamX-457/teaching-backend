@@ -1,14 +1,22 @@
+import { spitchAvailable, spitchConfigured, spitchSupports, translateWithSpitch } from "@/services/spitch.service";
+
 export type GlossaryEntry = { sourceText: string; targetText: string };
 
 export type TranslationResult = {
   text: string;
   // false when nothing could be translated and the original text is returned
   translated: boolean;
-  engine: "glossary" | "provider" | "llm" | "usem" | "none";
+  engine: "glossary" | "provider" | "llm" | "usem" | "spitch" | "azure" | "none";
 };
 
 const USEM_DEFAULT_URL =
   "https://ruachhakodesh9331--usem-nmt-translator-web.modal.run";
+
+// USEM runs on a separate deployment that can be stopped or moved. After it fails, skip it
+// for a while instead of making every request wait for it.
+let usemDownUntil = 0;
+const USEM_COOLDOWN_MS = 120_000;
+export const usemAvailable = () => Date.now() >= usemDownUntil;
 
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -136,6 +144,7 @@ export async function translateWithLlm(
 
 /** USEM's translation API translates English text into Ibibio. */
 export async function translateWithUsem(text: string): Promise<TranslationResult | null> {
+  if (!usemAvailable()) return null;
   const base = process.env.USEM_TRANSLATION_URL?.trim() || USEM_DEFAULT_URL;
   try {
     const res = await fetch(`${base.replace(/\/$/, "")}/translate`, {
@@ -144,11 +153,58 @@ export async function translateWithUsem(text: string): Promise<TranslationResult
       body: JSON.stringify({ text }),
       signal: AbortSignal.timeout(25_000),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      usemDownUntil = Date.now() + USEM_COOLDOWN_MS;
+      return null;
+    }
     const data = (await res.json()) as { translation?: unknown };
     const out = typeof data.translation === "string" ? data.translation.trim() : "";
     if (!out) return null;
     return { text: out, translated: true, engine: "usem" };
+  } catch {
+    usemDownUntil = Date.now() + USEM_COOLDOWN_MS;
+    return null;
+  }
+}
+
+// Azure Translator covers these of our languages. Ibibio is not available there.
+const AZURE_LANGS = new Set(["en", "fr", "es", "yo", "ha", "ig"]);
+export const azureSupports = (code: string) => AZURE_LANGS.has(code);
+const azureConfigured = () => Boolean(process.env.AZURE_TRANSLATOR_KEY?.trim());
+
+/**
+ * Azure AI Translator (text). Settings: AZURE_TRANSLATOR_KEY, AZURE_TRANSLATOR_REGION and,
+ * optionally, AZURE_TRANSLATOR_ENDPOINT (defaults to the global text endpoint).
+ * Returns null when not configured, when a language is not covered, or when the call fails.
+ */
+export async function translateWithAzure(
+  text: string,
+  source: string,
+  target: string,
+): Promise<TranslationResult | null> {
+  const key = process.env.AZURE_TRANSLATOR_KEY?.trim();
+  if (!key || !azureSupports(source) || !azureSupports(target)) return null;
+  const endpoint = (process.env.AZURE_TRANSLATOR_ENDPOINT?.trim() || "https://api.cognitive.microsofttranslator.com").replace(/\/$/, "");
+  const region = process.env.AZURE_TRANSLATOR_REGION?.trim();
+  try {
+    const res = await fetch(
+      `${endpoint}/translate?api-version=3.0&from=${encodeURIComponent(source)}&to=${encodeURIComponent(target)}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Ocp-Apim-Subscription-Key": key,
+          ...(region ? { "Ocp-Apim-Subscription-Region": region } : {}),
+        },
+        body: JSON.stringify([{ Text: text }]),
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { translations?: { text?: string }[] }[];
+    const out = data?.[0]?.translations?.[0]?.text?.trim();
+    if (!out) return null;
+    return { text: out, translated: true, engine: "azure" };
   } catch {
     return null;
   }
@@ -158,8 +214,9 @@ const cache = new Map<string, TranslationResult>();
 const CACHE_MAX = 2000;
 
 /**
- * Order: LLM, then HTTP provider, then glossary. Whichever is configured and
- * succeeds wins; the glossary is the always-available fallback.
+ * Order: USEM (English to Ibibio), Spitch (English, Yoruba, Hausa, Igbo), Azure Translator, LLM, HTTP provider,
+ * then glossary.
+ * Whichever is configured and succeeds wins; the glossary is the always-available fallback.
  * Failed lookups are not cached.
  */
 export async function translate(
@@ -177,6 +234,8 @@ export async function translate(
 
   const result =
     (source === "en" && target === "ibb" ? await translateWithUsem(text) : null) ??
+    (await translateWithSpitch(text, source, target)) ??
+    (await translateWithAzure(text, source, target)) ??
     (await translateWithLlm(text, source, target, glossary, names)) ??
     (await translateWithProvider(text, source, target)) ??
     translateWithGlossary(text, glossary);
@@ -188,10 +247,20 @@ export async function translate(
   return result;
 }
 
-export const translationProviderConfigured = (source?: string, target?: string) =>
-  Boolean(
-    (source === undefined && target === undefined) ||
-      (source === "en" && target === "ibb") ||
-    (process.env.LLM_BASE_URL && process.env.LLM_MODEL) ||
-      process.env.TRANSLATE_URL,
+/**
+ * Whether a real translation engine is connected.
+ * With no arguments: is a general engine (LLM or HTTP provider) configured?
+ * With a pair: can that pair be translated right now? English -> Ibibio also has USEM.
+ */
+export const translationProviderConfigured = (source?: string, target?: string) => {
+  const general = Boolean(
+    (process.env.LLM_BASE_URL && process.env.LLM_MODEL) || process.env.TRANSLATE_URL,
   );
+  if (source === undefined && target === undefined) {
+    return general || azureConfigured() || spitchConfigured() || Boolean(process.env.USEM_TRANSLATION_URL?.trim());
+  }
+  if (source === "en" && target === "ibb" && usemAvailable()) return true;
+  if (azureConfigured() && azureSupports(source ?? "") && azureSupports(target ?? "")) return true;
+  if (spitchAvailable() && spitchSupports(source ?? "") && spitchSupports(target ?? "")) return true;
+  return general;
+};

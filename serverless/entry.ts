@@ -1,4 +1,5 @@
-// Vercel entry point (bundled to api/index.js at build time by `bun build`):`n// runs the same Fastify app as `bun run index.ts`,
+// Vercel entry point (bundled to api/index.js at build time by `bun build`):
+// runs the same Fastify app as `bun run index.ts`,
 // but handled per-request instead of listening on a port.
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { buildApp } from "../src/app";

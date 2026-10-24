@@ -32,6 +32,15 @@ Create a `.env` file in the root directory and add your environment variables:
 DATABASE_URL=postgresql://user:password@ep-sample-123456.us-east-2.aws.neon.tech/neondb?sslmode=require
 BETTER_AUTH_SECRET=your_better_auth_secret_here
 BETTER_AUTH_URL=http://localhost:3000
+
+# Optional: payments through the shared Paystack account. Voice Verse's references start with
+# VOICEVERSE- (see docs/PAYMENTS.md). Webhook: POST /api/payments/webhook, reached through the shared
+# Paystack webhook router (ROUTE_VOICEVERSE on Choropia). The older /api/support/paystack/webhook still
+# works. Unset key = checkout answers 503/501.
+PAYSTACK_SECRET_KEY=
+PUBLIC_API_URL=https://your-api.example.com
+SUPPORT_MIN_NGN=500
+SUPPORT_MAX_NGN=1000000
 ```
 
 ### 3. Install Dependencies

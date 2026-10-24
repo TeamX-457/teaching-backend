@@ -6,7 +6,7 @@ export type LanguageConfig = {
   name: string;
   speechRecognition: { supported: boolean; locale?: string }; // spoken INPUT
   translation: boolean; // can be a translation TARGET
-  textToSpeech: { supported: boolean; locale?: string }; // spoken OUTPUT
+  textToSpeech: { supported: boolean; locale?: string; cloud?: boolean }; // spoken OUTPUT; cloud = server-made audio (no phone voice exists)
 };
 
 export const LANGUAGES: LanguageConfig[] = [
@@ -31,11 +31,11 @@ export const LANGUAGES: LanguageConfig[] = [
     translation: true,
     textToSpeech: { supported: true, locale: "es-ES" },
   },
-  // Translation into the languages below needs an LLM/HTTP provider; browsers
-  // cannot recognise or speak them reliably yet.
-  { code: "yo", name: "Yoruba", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: false } },
-  { code: "ha", name: "Hausa", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: false } },
-  { code: "ig", name: "Igbo", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: false } },
+  // Hausa, Yoruba and Igbo: phones have no voice for them, so spoken output is made on the server
+  // (Nigerian English voice driven by phonetic markup). Hearing them is not supported by phones yet.
+  { code: "yo", name: "Yoruba", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: true, locale: "en-NG", cloud: true } },
+  { code: "ha", name: "Hausa", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: true, locale: "en-NG", cloud: true } },
+  { code: "ig", name: "Igbo", speechRecognition: { supported: false }, translation: true, textToSpeech: { supported: true, locale: "en-NG", cloud: true } },
   {
     code: "ibb",
     name: "Ibibio",
