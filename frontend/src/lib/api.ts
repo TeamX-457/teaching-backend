@@ -37,7 +37,7 @@ export type LangCfg = {
   name: string;
   speechRecognition: { supported: boolean; locale?: string };
   translation: boolean;
-  textToSpeech: { supported: boolean; locale?: string };
+  textToSpeech: { supported: boolean; locale?: string; cloud?: boolean };
 };
 export type AuthUser = { id: string; name: string; email: string; role: "educator" | "student" };
 export type VenueType = "classroom" | "conference" | "church" | "town_hall" | "other";
@@ -60,6 +60,9 @@ export type LiveCaption = {
   translated: boolean;
   createdAt: string;
 };
+export type Invite = { id: string; identifier: string; email: string | null; name: string | null; pending: boolean };
+export type InvitedSession = { code: string; title: string; venueType: VenueType; sourceLang: string; hostName: string | null; createdAt: string };
+export type ApiKeyInfo = { id: string; name: string; prefix: string; createdAt: string; lastUsedAt: string | null };
 export type TranslateResult = {
   text: string;
   translated: boolean;
@@ -81,6 +84,12 @@ export const api = {
     signOut: () => request<unknown>("/api/auth/sign-out", { method: "POST", body: {} }),
   },
 
+  keys: {
+    list: () => request<{ keys: ApiKeyInfo[] }>("/api/keys"),
+    create: (name: string) => request<{ key: ApiKeyInfo; secret: string }>("/api/keys", { method: "POST", body: { name } }),
+    revoke: (id: string) => request<{ ok: boolean }>(`/api/keys/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  },
+
   contact: (b: { name: string; email: string; topic: string; message: string; website?: string | undefined }) =>
     request<{ ok: boolean }>("/api/contact", { method: "POST", body: b }),
 
@@ -93,6 +102,12 @@ export const api = {
     end: (code: string) => request<{ session: LiveSession }>(`/api/live/sessions/${encodeURIComponent(code)}/end`, { method: "POST", body: {} }),
     addCaption: (code: string, text: string) =>
       request<{ caption: { seq: number } }>(`/api/live/sessions/${encodeURIComponent(code)}/captions`, { method: "POST", body: { text } }),
+    invites: (code: string) => request<{ invites: Invite[] }>(`/api/live/sessions/${encodeURIComponent(code)}/invites`),
+    invite: (code: string, identifier: string) =>
+      request<{ invite: Invite }>(`/api/live/sessions/${encodeURIComponent(code)}/invites`, { method: "POST", body: { identifier } }),
+    removeInvite: (code: string, id: string) =>
+      request<{ ok: boolean }>(`/api/live/sessions/${encodeURIComponent(code)}/invites/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    invited: () => request<{ sessions: InvitedSession[] }>("/api/live/invited"),
     captions: (code: string, after: number, lang?: string) =>
       request<{ status: "live" | "ended"; captions: LiveCaption[] }>(
         `/api/live/sessions/${encodeURIComponent(code)}/captions?after=${after}${lang ? `&lang=${encodeURIComponent(lang)}` : ""}`,

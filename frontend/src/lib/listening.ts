@@ -86,21 +86,57 @@ export function useRecognizer(opts: {
   }, []);
 
   useEffect(() => () => { running.current = false; try { rec.current?.stop(); } catch { /* noop */ } }, []);
-  return { start, stop };
+  // Stable identity: callers put this in effect dependency lists.
+  return useMemo(() => ({ start, stop }), [start, stop]);
 }
 
-/** Spoken output with a short queue so continuous speech never builds a backlog. */
-export function useSpeaker(opts: { enabled: boolean; locale: string | undefined; rate: number; onProblem: (p: Problem) => void }) {
+/**
+ * Spoken output with a short queue so continuous speech never builds a backlog.
+ * With `cloudLang` (Hausa, Yoruba, Igbo) the audio comes from the server, which pronounces those languages
+ * properly; browsers have no voice for them and read the letters out. Otherwise the browser's own voice is used.
+ */
+export function useSpeaker(opts: { enabled: boolean; locale: string | undefined; rate: number; onProblem: (p: Problem) => void; cloudLang?: string | undefined }) {
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
   const queue = useRef<string[]>([]);
   const busy = useRef(false);
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const generation = useRef(0);
   const o = useRef(opts);
   o.current = opts;
 
   const next = useCallback(() => {
-    if (busy.current || !queue.current.length || typeof speechSynthesis === "undefined") return;
-    const u = new SpeechSynthesisUtterance(queue.current.shift()!);
+    if (busy.current || !queue.current.length) return;
+    const text = queue.current.shift()!;
+    const cloud = o.current.cloudLang;
+
+    if (cloud) {
+      const gen = generation.current;
+      busy.current = true;
+      setSpeaking(true);
+      const finish = () => { busy.current = false; setSpeaking(false); next(); };
+      fetch("/api/speech", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, language: cloud, voice: "female", rate: o.current.rate }),
+      })
+        .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
+        .then((blob) => {
+          if (gen !== generation.current) return; // stopped while the audio was being made
+          const url = URL.createObjectURL(blob);
+          const a = new Audio(url);
+          audio.current = a;
+          const done = () => { URL.revokeObjectURL(url); if (audio.current === a) audio.current = null; if (gen === generation.current) finish(); };
+          a.onended = done;
+          a.onerror = () => { o.current.onProblem(problem("tts")); done(); };
+          a.play().catch(() => { o.current.onProblem(problem("tts")); done(); });
+        })
+        .catch(() => { if (gen === generation.current) { o.current.onProblem(problem("tts")); finish(); } });
+      return;
+    }
+
+    if (typeof speechSynthesis === "undefined") return;
+    const u = new SpeechSynthesisUtterance(text);
     if (o.current.locale) u.lang = o.current.locale;
     u.rate = o.current.rate;
     busy.current = true;
@@ -111,16 +147,26 @@ export function useSpeaker(opts: { enabled: boolean; locale: string | undefined;
   }, []);
 
   const say = useCallback((text: string) => {
-    if (!o.current.enabled || typeof speechSynthesis === "undefined") return;
+    if (!o.current.enabled) return;
+    if (!o.current.cloudLang && typeof speechSynthesis === "undefined") return;
     queue.current.push(text);
     if (queue.current.length > 2) queue.current.splice(0, queue.current.length - 2);
     next();
   }, [next]);
 
-  const pause = useCallback(() => { speechSynthesis.pause(); setPaused(true); }, []);
-  const resume = useCallback(() => { speechSynthesis.resume(); setPaused(false); next(); }, [next]);
+  const pause = useCallback(() => {
+    if (audio.current) audio.current.pause(); else if (typeof speechSynthesis !== "undefined") speechSynthesis.pause();
+    setPaused(true);
+  }, []);
+  const resume = useCallback(() => {
+    if (audio.current) void audio.current.play(); else if (typeof speechSynthesis !== "undefined") speechSynthesis.resume();
+    setPaused(false);
+    next();
+  }, [next]);
   const stop = useCallback(() => {
+    generation.current++;
     queue.current = []; busy.current = false;
+    if (audio.current) { audio.current.pause(); audio.current = null; }
     if (typeof speechSynthesis !== "undefined") speechSynthesis.cancel();
     setSpeaking(false); setPaused(false);
   }, []);
@@ -151,6 +197,7 @@ export function useListening(cfg: { from: string; to: string; langs: LangCfg[]; 
   const speaker = useSpeaker({
     enabled: cfg.audio && translating && !!toCfg?.textToSpeech.supported,
     locale: toCfg?.textToSpeech.locale, rate: cfg.rate,
+    cloudLang: toCfg?.textToSpeech.cloud ? toCfg.code : undefined,
     onProblem: setProblem,
   });
 

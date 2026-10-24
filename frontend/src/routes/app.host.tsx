@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Mic, Pause, Play, Square } from "lucide-react";
+import { Mic, Pause, Play, Square, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LiveStage } from "@/components/vv/LiveStage";
 import { CopyButton, LangSelect, ProblemBanner } from "@/components/vv/fields";
 import { EmptyState, PageHeader } from "@/components/vv/primitives";
-import { api, VENUES, venueLabel, type LiveSession, type VenueType } from "@/lib/api";
+import { api, ApiError, VENUES, venueLabel, type Invite, type LiveSession, type VenueType } from "@/lib/api";
 import { useAuth, useLanguages } from "@/lib/auth";
 import { speechSupported, useRecognizer, type Problem, type Stage } from "@/lib/listening";
 import { useStore } from "@/lib/store";
@@ -92,7 +92,9 @@ function Broadcast({ session, langs, onEnded }: { session: LiveSession; langs: {
     onFinal: (t) => { setPartial(""); setLines((l) => [...l, t]); send(t); },
     onProblem: (p) => { setProblem(p); if (p.fatal) setOn(false); },
   });
-  useEffect(() => () => rec.stop(), [rec]);
+  const stopRef = useRef(rec.stop);
+  stopRef.current = rec.stop;
+  useEffect(() => () => stopRef.current(), []);
 
   const stage: Stage = ended ? "completed" : problem?.fatal ? "error" : on ? "listening" : "paused";
   const last = partial || lines[lines.length - 1] || "";
@@ -108,6 +110,8 @@ function Broadcast({ session, langs, onEnded }: { session: LiveSession; langs: {
           <div className="mt-4 flex gap-2"><CopyButton text={session.code} label="Copy code" /><CopyButton text={link} label="Copy link" /></div>
         </div>
       </div>
+
+      <InvitePanel code={session.code} />
 
       <div className="mt-6"><LiveStage stage={stage} title="Your broadcast" fromName={cfg?.name ?? session.sourceLang} toName="" original={last} translated="" live={on && !ended} showTranslation={false} translationPending={false} subtitleSize={size} /></div>
 
@@ -128,5 +132,59 @@ function Broadcast({ session, langs, onEnded }: { session: LiveSession; langs: {
       {!speechSupported() && <p className="mt-3 text-sm text-muted-foreground">Speaking needs Chrome or Edge.</p>}
       {ended && <Button className="mt-4" onClick={onEnded}>Start another session</Button>}
     </>
+  );
+}
+
+function InvitePanel({ code }: { code: string }) {
+  const [value, setValue] = useState("");
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [err, setErr] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { api.live.invites(code).then((r) => setInvites(r.invites)).catch(() => {}); }, [code]);
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!value.trim()) return;
+    setBusy(true);
+    setErr(undefined);
+    try {
+      const r = await api.live.invite(code, value.trim());
+      setInvites((l) => [r.invite, ...l]);
+      setValue("");
+    } catch (e2) {
+      setErr(e2 instanceof ApiError ? e2.message : "We couldn't add that person. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rise d-2 mt-6 rounded-2xl border bg-card p-6" aria-labelledby="invite-title">
+      <h2 id="invite-title" className="flex items-center gap-2 text-sm font-medium"><UserPlus className="h-4 w-4 text-primary" /> Invite people</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Add someone by email or by the name on their account. The session appears on their dashboard when they sign in. Anyone with the code can also join.</p>
+      <form onSubmit={add} className="mt-4 flex gap-2">
+        <Input value={value} onChange={(e) => setValue(e.target.value)} placeholder="name@example.com or full name" aria-label="Email or name" className="h-11" />
+        <Button type="submit" size="lg" disabled={!value.trim() || busy}>{busy ? "Adding…" : "Add"}</Button>
+      </form>
+      {err && <p role="alert" className="mt-2 text-sm text-destructive">{err}</p>}
+      {invites.length > 0 && (
+        <ul className="mt-4 divide-y rounded-xl border">
+          {invites.map((i) => (
+            <li key={i.id} className="fade-in flex items-center justify-between gap-3 px-4 py-2.5 text-sm">
+              <span className="min-w-0 truncate">
+                <span className="font-medium">{i.name ?? i.identifier}</span>
+                {i.name && i.email && <span className="ml-2 text-muted-foreground">{i.email}</span>}
+                {i.pending && <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">Waiting for sign-up</span>}
+              </span>
+              <button aria-label={`Remove ${i.name ?? i.identifier}`} className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-secondary"
+                onClick={async () => { await api.live.removeInvite(code, i.id).catch(() => {}); setInvites((l) => l.filter((x) => x.id !== i.id)); }}>
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

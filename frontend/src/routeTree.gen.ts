@@ -14,6 +14,8 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AccessibilityRouteImport } from './routes/accessibility'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as CreditsRouteImport } from './routes/credits'
+import { Route as DownloadRouteImport } from './routes/download'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as LoginRouteImport } from './routes/login'
@@ -21,6 +23,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppDevelopersRouteImport } from './routes/app.developers'
 import { Route as AppHelpRouteImport } from './routes/app.help'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
 import { Route as AppHostRouteImport } from './routes/app.host'
@@ -56,6 +59,16 @@ const ContactRoute = ContactRouteImport.update({
   path: '/contact',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreditsRoute = CreditsRouteImport.update({
+  id: '/credits',
+  path: '/credits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadRoute = DownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
@@ -89,6 +102,11 @@ const TermsRoute = TermsRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDevelopersRoute = AppDevelopersRouteImport.update({
+  id: '/developers',
+  path: '/developers',
   getParentRoute: () => AppRoute,
 } as any)
 const AppHelpRoute = AppHelpRouteImport.update({
@@ -143,12 +161,15 @@ export interface FileRoutesByFullPath {
   '/accessibility': typeof AccessibilityRoute
   '/app': typeof AppRouteWithChildren
   '/contact': typeof ContactRoute
+  '/credits': typeof CreditsRoute
+  '/download': typeof DownloadRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/developers': typeof AppDevelopersRoute
   '/app/help': typeof AppHelpRoute
   '/app/history': typeof AppHistoryRouteWithChildren
   '/app/host': typeof AppHostRoute
@@ -165,12 +186,15 @@ export interface FileRoutesByTo {
   '/about': typeof AboutRoute
   '/accessibility': typeof AccessibilityRoute
   '/contact': typeof ContactRoute
+  '/credits': typeof CreditsRoute
+  '/download': typeof DownloadRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/developers': typeof AppDevelopersRoute
   '/app/help': typeof AppHelpRoute
   '/app/history': typeof AppHistoryRouteWithChildren
   '/app/host': typeof AppHostRoute
@@ -189,12 +213,15 @@ export interface FileRoutesById {
   '/accessibility': typeof AccessibilityRoute
   '/app': typeof AppRouteWithChildren
   '/contact': typeof ContactRoute
+  '/credits': typeof CreditsRoute
+  '/download': typeof DownloadRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/developers': typeof AppDevelopersRoute
   '/app/help': typeof AppHelpRoute
   '/app/history': typeof AppHistoryRouteWithChildren
   '/app/host': typeof AppHostRoute
@@ -214,12 +241,15 @@ export interface FileRouteTypes {
     | '/accessibility'
     | '/app'
     | '/contact'
+    | '/credits'
+    | '/download'
     | '/forgot-password'
     | '/join'
     | '/login'
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/developers'
     | '/app/help'
     | '/app/history'
     | '/app/host'
@@ -236,12 +266,15 @@ export interface FileRouteTypes {
     | '/about'
     | '/accessibility'
     | '/contact'
+    | '/credits'
+    | '/download'
     | '/forgot-password'
     | '/join'
     | '/login'
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/developers'
     | '/app/help'
     | '/app/history'
     | '/app/host'
@@ -259,12 +292,15 @@ export interface FileRouteTypes {
     | '/accessibility'
     | '/app'
     | '/contact'
+    | '/credits'
+    | '/download'
     | '/forgot-password'
     | '/join'
     | '/login'
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/developers'
     | '/app/help'
     | '/app/history'
     | '/app/host'
@@ -283,6 +319,8 @@ export interface RootRouteChildren {
   AccessibilityRoute: typeof AccessibilityRoute
   AppRoute: typeof AppRouteWithChildren
   ContactRoute: typeof ContactRoute
+  CreditsRoute: typeof CreditsRoute
+  DownloadRoute: typeof DownloadRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
@@ -327,6 +365,20 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/credits': {
+      id: '/credits'
+      path: '/credits'
+      fullPath: '/credits'
+      preLoaderRoute: typeof CreditsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download': {
+      id: '/download'
+      path: '/download'
+      fullPath: '/download'
+      preLoaderRoute: typeof DownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -376,6 +428,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/developers': {
+      id: '/app/developers'
+      path: '/developers'
+      fullPath: '/app/developers'
+      preLoaderRoute: typeof AppDevelopersRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/help': {
@@ -457,6 +516,7 @@ const AppHistoryRouteWithChildren = AppHistoryRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppDevelopersRoute: typeof AppDevelopersRoute
   AppHelpRoute: typeof AppHelpRoute
   AppHistoryRoute: typeof AppHistoryRouteWithChildren
   AppHostRoute: typeof AppHostRoute
@@ -468,6 +528,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppDevelopersRoute: AppDevelopersRoute,
   AppHelpRoute: AppHelpRoute,
   AppHistoryRoute: AppHistoryRouteWithChildren,
   AppHostRoute: AppHostRoute,
@@ -486,6 +547,8 @@ const rootRouteChildren: RootRouteChildren = {
   AccessibilityRoute: AccessibilityRoute,
   AppRoute: AppRouteWithChildren,
   ContactRoute: ContactRoute,
+  CreditsRoute: CreditsRoute,
+  DownloadRoute: DownloadRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,

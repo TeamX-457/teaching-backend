@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { Home, Mic, History, Languages, Settings, LifeBuoy, Radio, KeyRound, LogOut } from "lucide-react";
+import { Home, Mic, History, Languages, Settings, LifeBuoy, Radio, KeyRound, LogOut, Code2 } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Logo } from "@/components/vv/primitives";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ const NAV = [
   { to: "/app/host", label: "Host a session", icon: Radio, educatorOnly: true },
   { to: "/app/history", label: "History", icon: History },
   { to: "/app/languages", label: "Languages", icon: Languages },
+  { to: "/app/developers", label: "Developers", icon: Code2 },
   { to: "/app/settings", label: "Settings", icon: Settings },
   { to: "/app/help", label: "Help", icon: LifeBuoy },
 ] as const;
@@ -44,7 +45,7 @@ function AppLayout() {
   return (
     <SidebarProvider defaultOpen={!compact}>
       <Sidebar collapsible="icon">
-        <SidebarHeader className="px-4 py-4"><Logo /></SidebarHeader>
+        <SidebarHeader className="px-4 py-4 group-data-[collapsible=icon]:px-2"><Logo className="group-data-[collapsible=icon]:gap-0" /></SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
             <SidebarMenu>
@@ -75,7 +76,7 @@ function AppLayout() {
       </Sidebar>
       <SidebarInset>
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur">
-          <SidebarTrigger aria-label="Toggle navigation" />
+          <SidebarTrigger aria-label="Toggle navigation" className="h-10 w-10" />
           <span className="flex-1" />
           <Button size="sm" asChild><Link to="/app/listen"><Mic /> Start listening</Link></Button>
         </header>

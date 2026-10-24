@@ -41,8 +41,11 @@ function Viewer() {
   const langs = data?.languages ?? [];
   const toCfg = langs.find((l) => l.code === lang);
   const translating = !!info && lang !== info.sourceLang;
-  const ttsOk = translating && !!toCfg?.textToSpeech.supported && typeof speechSynthesis !== "undefined";
-  const speaker = useSpeaker({ enabled: audio && ttsOk, locale: toCfg?.textToSpeech.locale, rate: settings.playbackRate, onProblem: () => {} });
+  const ttsOk = translating && !!toCfg?.textToSpeech.supported && (!!toCfg.textToSpeech.cloud || typeof speechSynthesis !== "undefined");
+  const speaker = useSpeaker({
+    enabled: audio && ttsOk, locale: toCfg?.textToSpeech.locale, rate: settings.playbackRate, onProblem: () => {},
+    cloudLang: toCfg?.textToSpeech.cloud ? toCfg.code : undefined,
+  });
 
   useEffect(() => {
     api.live.get(code.toUpperCase()).then((r) => { setInfo(r.session); setStatus(r.session.status); api.live.join(code).catch(() => {}); })

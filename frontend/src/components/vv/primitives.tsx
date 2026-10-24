@@ -10,7 +10,7 @@ export function Logo({ className, inverted }: { className?: string; inverted?: b
           <path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" />
         </svg>
       </span>
-      <span className="text-[17px]">Voice Verse</span>
+      <span className="text-[17px] group-data-[collapsible=icon]:hidden">Voice Verse</span>
     </Link>
   );
 }

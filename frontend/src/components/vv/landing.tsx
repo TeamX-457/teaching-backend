@@ -6,6 +6,7 @@ import { api, type LangCfg } from "@/lib/api";
 import { speechSupported, useRecognizer } from "@/lib/listening";
 import { cn } from "@/lib/utils";
 import { Waveform } from "./primitives";
+import { Photo, type PhotoKey } from "./photos";
 import { Words } from "./story";
 
 const prefersReduced = () =>
@@ -91,7 +92,7 @@ export function TryPanel({ langs, providerReady }: { langs: LangCfg[]; providerR
     return () => clearTimeout(t);
   }, [idle, demo]);
   const sample = DEMO_SCRIPT[demo.i % DEMO_SCRIPT.length]!;
-  const sizes = ["text-xl sm:text-2xl", "text-2xl sm:text-4xl", "text-3xl sm:text-5xl"];
+  const sizes = ["text-lg sm:text-xl", "text-xl sm:text-3xl", "text-2xl sm:text-4xl"];
   const current = partial || lines[lines.length - 1]?.text || "";
   const last = lines[lines.length - 1];
 
@@ -187,7 +188,7 @@ export function FocusSlider() {
 
   return (
     <div ref={ref}>
-      <p className="font-display text-3xl leading-snug sm:text-5xl" aria-label={FOCUS_TEXT}>
+      <p className="font-display text-2xl leading-snug sm:text-4xl" aria-label={FOCUS_TEXT}>
         {words.map((w, i) => {
           const clear = i < shown;
           return (
@@ -238,10 +239,10 @@ const arcs = (): Pt[] => {
 };
 
 const VENUES = [
-  { key: "classroom", label: "Classroom", line: "A lesson in a language you are still learning.", seats: grid(), stage: [200, 36] as Pt },
-  { key: "church", label: "Church", line: "A sermon, a prayer, a hymn, followed by everyone in the pews.", seats: pews(), stage: [200, 36] as Pt },
-  { key: "conference", label: "Conference", line: "Round tables, many mother tongues, one conversation.", seats: tables(), stage: [200, 30] as Pt },
-  { key: "town", label: "Town hall", line: "A community decision that belongs to the whole community.", seats: arcs(), stage: [200, 24] as Pt },
+  { key: "classroom", photo: "classroom" as PhotoKey, label: "Classroom", line: "A lesson in a language you are still learning.", seats: grid(), stage: [200, 36] as Pt },
+  { key: "church", photo: "church" as PhotoKey, label: "Church", line: "A sermon, a prayer, a hymn, followed by everyone in the pews.", seats: pews(), stage: [200, 36] as Pt },
+  { key: "conference", photo: "conference" as PhotoKey, label: "Conference", line: "Round tables, many mother tongues, one conversation.", seats: tables(), stage: [200, 30] as Pt },
+  { key: "town", photo: "community" as PhotoKey, label: "Town hall", line: "A community decision that belongs to the whole community.", seats: arcs(), stage: [200, 24] as Pt },
 ] as const;
 
 export function VenuePlans() {
@@ -260,11 +261,14 @@ export function VenuePlans() {
             </button>
           ))}
         </div>
-        <p key={venue.key} className="rise mt-8 font-display text-3xl leading-snug sm:text-4xl">{venue.line}</p>
+        <p key={venue.key} className="rise mt-8 font-display text-2xl leading-snug sm:text-3xl">{venue.line}</p>
         <p className="mt-4 text-muted-foreground">Same microphone. Same phone in your hand. Every seat lights up when its person is following.</p>
       </div>
-      <div className="plan rounded-3xl border bg-card p-4" data-flip={flip}>
-        <svg viewBox="0 0 400 240" className="h-auto w-full" role="img" aria-label={`Seating plan of a ${venue.label.toLowerCase()}`}>
+      <div className="plan overflow-hidden rounded-3xl border bg-card" data-flip={flip}>
+        <div className="relative aspect-[16/7] w-full overflow-hidden bg-ink">
+          <div key={venue.key} className="fade-in absolute inset-0"><Photo name={venue.photo} className="photo-warm" /></div>
+        </div>
+        <svg viewBox="0 0 400 240" className="h-auto w-full p-4" role="img" aria-label={`Seating plan of a ${venue.label.toLowerCase()}`}>
           <g className="stage" style={{ transform: `translate(${venue.stage[0]}px, ${venue.stage[1]}px)` }}>
             <rect x="-34" y="-9" width="68" height="18" rx="9" fill="var(--signal)" />
           </g>
@@ -282,7 +286,7 @@ export function VenuePlans() {
 /* ------------------------------------------------------------------ */
 /* 5. A film frame with subtitles: the story told in its own medium      */
 /* ------------------------------------------------------------------ */
-export function FilmFrame({ children, en, fr, note }: { children: React.ReactNode; en: string; fr: string; note: string }) {
+export function FilmFrame({ children, en, fr, note, stacked }: { children: React.ReactNode; en: string; fr: string; note: string; stacked?: boolean }) {
   const [seen, setSeen] = useState(false);
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -294,15 +298,15 @@ export function FilmFrame({ children, en, fr, note }: { children: React.ReactNod
   }, []);
   return (
     <figure ref={ref} className="overflow-hidden rounded-3xl bg-ink text-ink-foreground">
-      <div className="relative aspect-[4/3] w-full sm:aspect-[21/9]">
+      <div className={cn("relative w-full", stacked ? "aspect-[4/5]" : "aspect-[4/3] sm:aspect-[21/9]")}>
         <div className="absolute inset-0">{children}</div>
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-5 pb-5 pt-16 text-center sm:px-10">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-5 pb-5 pt-20 text-center">
           {seen ? (
             <>
-              <p className="font-display text-2xl text-white sm:text-4xl"><Words text={en} /></p>
-              <p className="rise d-5 mt-1.5 text-sm text-signal sm:text-lg">{fr}</p>
+              <p className="font-display text-xl text-white sm:text-2xl"><Words text={en} /></p>
+              <p className="rise d-5 mt-1.5 text-sm text-signal">{fr}</p>
             </>
-          ) : <p className="font-display text-2xl text-transparent sm:text-4xl" aria-hidden>{en}</p>}
+          ) : <p className="font-display text-xl text-transparent sm:text-2xl" aria-hidden>{en}</p>}
         </div>
       </div>
       <figcaption className="sr-only">{note}</figcaption>

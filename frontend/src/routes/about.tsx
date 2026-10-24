@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { PublicPage } from "@/components/vv/PublicPage";
 import { Reveal } from "@/components/vv/primitives";
 import { Magnetic } from "@/components/vv/story";
-import audience from "@/assets/audience.jpg";
+import { Photo } from "@/components/vv/photos";
 
 export const Route = createFileRoute("/about")({
   head: () => ({ meta: [{ title: "About — Voice Verse" }, { name: "description", content: "Voice Verse is a student-built accessibility product from Voice First Company, a Junior Achievement Nigeria company in Akwa Ibom State." }] }),
@@ -22,7 +22,7 @@ function About() {
   return (
     <PublicPage eyebrow="About" title="A small idea about being included." lead="Voice Verse exists so that no one is left out of a room because they cannot follow what is being said.">
       <Reveal>
-        <div className="photo-duo aspect-[16/8] w-full rounded-3xl"><img src={audience} alt="An attendee reading live subtitles on her phone" loading="lazy" /></div>
+        <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr]"><div className="aspect-[16/10] overflow-hidden rounded-3xl"><Photo name="conference" className="photo-warm" /></div><div className="hidden aspect-[4/5] overflow-hidden rounded-3xl sm:block sm:aspect-auto"><Photo name="church" className="photo-warm" /></div></div>
       </Reveal>
 
       <ol className="mt-16 space-y-12 border-l pl-8">

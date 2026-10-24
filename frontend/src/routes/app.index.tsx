@@ -4,6 +4,8 @@ import { ArrowRight, Clock3, History, KeyRound, Mic, Radio } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState, PageHeader } from "@/components/vv/primitives";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 import { useAuth, useLanguages } from "@/lib/auth";
 import { fmtDuration, langName } from "@/lib/languages";
 import { useStore } from "@/lib/store";
@@ -17,6 +19,7 @@ function Dashboard() {
   const nav = useNavigate();
   const [code, setCode] = useState("");
   const nameOf = (c: string) => langs?.find((l) => l.code === c)?.name ?? langName(c);
+  const invited = useQuery({ queryKey: ["invited"], queryFn: () => api.live.invited(), staleTime: 15_000, refetchInterval: 20_000, retry: false }).data?.sessions ?? [];
   const total = sessions.reduce((n, s) => n + s.durationSec, 0);
   const lines = sessions.reduce((n, s) => n + s.segments.length, 0);
 
@@ -62,6 +65,22 @@ function Dashboard() {
           );
         })}
       </div>
+
+      {invited.length > 0 && (
+        <>
+          <h2 className="mb-4 mt-12 text-lg font-medium">Invited to</h2>
+          <ul className="rise grid gap-3 sm:grid-cols-2">
+            {invited.map((s) => (
+              <li key={s.code}>
+                <Link to="/live/$code" params={{ code: s.code }} className="card-hover flex items-center justify-between gap-3 rounded-xl border bg-card p-5">
+                  <span className="min-w-0"><span className="block truncate font-medium">{s.title}</span><span className="text-sm text-muted-foreground">{s.hostName ? `Hosted by ${s.hostName}` : "Live now"}</span></span>
+                  <span className="shrink-0 rounded-full bg-success/15 px-2.5 py-1 text-xs text-success">Live</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       <h2 className="mb-4 mt-12 text-lg font-medium">Recent sessions</h2>
       {sessions.length === 0 ? (

@@ -60,8 +60,12 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
+// Runs before first paint so the saved theme and display preferences never flash the wrong way.
+const THEME_BOOT = `(function(){try{var d=document.documentElement,c=d.classList,s=(JSON.parse(localStorage.getItem('voiceverse:v1')||'{}').settings)||{};var t=s.theme||'light';var dark=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(dark){c.add('dark');d.style.colorScheme='dark';}if(s.reducedMotion)c.add('reduce-motion');if(s.highContrast)c.add('contrast-mode');if(s.textSize==='large')c.add('text-lg-mode');if(s.textSize==='xl')c.add('text-xl-mode');}catch(e){}})();`;
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
+    scripts: [{ children: THEME_BOOT }],
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -89,7 +93,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

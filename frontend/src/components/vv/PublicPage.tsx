@@ -9,8 +9,8 @@ export function PublicPage({ eyebrow, title, lead, children, wide }: { eyebrow: 
       <SiteHeader />
       <main className={`mx-auto px-5 pb-24 pt-14 sm:pt-20 ${wide ? "max-w-6xl" : "max-w-3xl"}`}>
         <p className="rise font-mono text-xs uppercase tracking-widest text-muted-foreground">{eyebrow}</p>
-        <h1 className="mt-3 font-display text-4xl leading-tight sm:text-6xl"><Words text={title} /></h1>
-        {lead && <p className="rise d-3 mt-5 max-w-2xl text-lg leading-relaxed text-muted-foreground">{lead}</p>}
+        <h1 className="mt-3 font-display text-3xl leading-tight sm:text-5xl"><Words text={title} /></h1>
+        {lead && <p className="rise d-3 mt-5 max-w-2xl text-base leading-relaxed sm:text-lg text-muted-foreground">{lead}</p>}
         <div className="mt-12">{children}</div>
       </main>
       <SiteFooter />

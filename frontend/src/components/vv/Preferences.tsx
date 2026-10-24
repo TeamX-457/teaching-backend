@@ -12,6 +12,7 @@ export function Preferences() {
     h.classList.toggle("text-xl-mode", s.textSize === "xl");
     const dark = s.theme === "dark" || (s.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
     h.classList.toggle("dark", dark);
+    h.style.colorScheme = dark ? "dark" : "";
   }, [s.reducedMotion, s.highContrast, s.textSize, s.theme]);
   return null;
 }

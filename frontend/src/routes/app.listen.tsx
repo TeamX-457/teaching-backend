@@ -46,7 +46,7 @@ function Session({ langs, providerReady }: { langs: NonNullable<ReturnType<typeo
   const L = useListening({ from, to, langs, audio, rate: settings.playbackRate });
   const toCfg = langs.find((l) => l.code === to);
   const showTr = from !== to;
-  const ttsOk = !!toCfg?.textToSpeech.supported && typeof speechSynthesis !== "undefined";
+  const ttsOk = !!toCfg?.textToSpeech.supported && (!!toCfg.textToSpeech.cloud || typeof speechSynthesis !== "undefined");
 
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" }); }, [L.segments.length]);
 
@@ -87,7 +87,7 @@ function Session({ langs, providerReady }: { langs: NonNullable<ReturnType<typeo
                 <SelectContent>{VENUES.map((v) => <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            {from !== to && !providerReady && (
+            {from !== to && !providerReady && !(from === "en" && to === "ibb") && (
               <p className="rounded-lg bg-secondary px-4 py-3 text-sm text-muted-foreground">We can't translate into other languages yet. Subtitles will still appear in the language being spoken.</p>
             )}
             <Button size="lg" className="w-full" disabled={!speechSupported() || !canListen(from)} onClick={() => { setBegun(true); L.start(); }}>

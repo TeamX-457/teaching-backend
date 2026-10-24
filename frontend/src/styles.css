@@ -283,3 +283,9 @@ input[type="range"]::-webkit-slider-thumb { appearance: none; height: 22px; widt
 input[type="range"]::-moz-range-thumb { height: 18px; width: 18px; border-radius: 999px; background: var(--primary); border: 3px solid var(--background); }
 @media (prefers-reduced-motion: reduce) { .plan .seat { animation: none !important; fill: var(--primary); } .plan .seat-g, .plan .stage { transition: none; } }
 html.reduce-motion .plan .seat { animation: none !important; fill: var(--primary); }
+/* Photos: warm, documentary treatment and a gentle float for the hero collage. */
+.photo-warm { filter: saturate(0.95) contrast(1.02); }
+@keyframes vv-float { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); } 50% { transform: translateY(-8px) rotate(var(--r, 0deg)); } }
+.float { animation: vv-float 7s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .float { animation: none; } }
+html.reduce-motion .float { animation: none; }

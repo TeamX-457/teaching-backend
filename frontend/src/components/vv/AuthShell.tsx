@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Logo } from "./primitives";
 import { CaptionLoop } from "./scenes";
 import { Words } from "./story";
-import audience from "@/assets/audience.jpg";
+import { Photo } from "./photos";
 
 export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: ReactNode; footer?: ReactNode }) {
   return (
@@ -18,7 +18,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
         </div>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-12">
           <div key={title}>
-            <h1 className="font-display text-[34px] leading-tight"><Words text={title} /></h1>
+            <h1 className="font-display text-[28px] leading-tight"><Words text={title} /></h1>
             {subtitle && <p className="rise d-3 mt-2 text-muted-foreground">{subtitle}</p>}
             <div className="rise d-4 mt-8">{children}</div>
             {footer && <div className="rise d-5 mt-8 text-sm text-muted-foreground">{footer}</div>}
@@ -27,7 +27,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
       </div>
 
       <aside className="relative hidden overflow-hidden bg-ink text-ink-foreground lg:flex lg:flex-col lg:justify-end">
-        <div className="photo-duo absolute inset-0 opacity-60"><img src={audience} alt="" /></div>
+        <div className="absolute inset-0 opacity-70"><Photo name="classroom" className="photo-warm" /></div>
         <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-ink/20" />
         <div className="relative max-w-md p-12 fade-in d-2">
           <CaptionLoop />
