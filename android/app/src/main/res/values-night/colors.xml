@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark phones: no light flash behind the app while it starts. -->
+    <color name="vv_paper">#0E1B1A</color>
+</resources>
