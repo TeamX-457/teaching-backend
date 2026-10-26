@@ -80,6 +80,7 @@ fun ListenScreen(api: Api, code: String, onBack: () -> Unit) {
     var ended by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var speak by remember { mutableStateOf(false) }
+    var billing by remember { mutableStateOf<SessionBilling?>(null) }
     val lines = remember { mutableStateListOf<Caption>() }
     val list = rememberLazyListState()
 
@@ -93,17 +94,22 @@ fun ListenScreen(api: Api, code: String, onBack: () -> Unit) {
     }
 
     LaunchedEffect(code) {
-        runCatching { session = api.get(code) }
+        runCatching { session = api.get(code); billing = session?.billing }
         runCatching { allLangs = api.languages(); langs = allLangs.filter { it.translation } }
     }
 
-    // Poll for new captions. Restarts from scratch whenever the language changes.
+    // Real time: each request waits on the server and is answered the moment the speaker's next line arrives.
+    // Restarts from scratch whenever the language changes.
     LaunchedEffect(code, lang) {
         lines.clear()
         var after = 0
+        var first = true
         while (true) {
+            val started = System.currentTimeMillis()
             try {
-                val page = api.captions(code, after, lang)
+                val page = api.captions(code, after, lang, if (first) 0 else 20)
+                first = false
+                page.billing?.let { billing = it }
                 error = null
                 page.captions.forEach { c ->
                     lines.add(c)
@@ -113,7 +119,11 @@ fun ListenScreen(api: Api, code: String, onBack: () -> Unit) {
                         val say = c.translatedText ?: c.text
                         val spoken = if (c.translated && lang != null) lang!! else (session?.sourceLang ?: "en")
                         if (allLangs.firstOrNull { it.code == spoken }?.textToSpeech?.cloud == true) {
-                            cloud.speak(say, spoken, 1f)
+                            if (billing?.voice == "none") {
+                                error = "The speaker hasn't turned on spoken voice for this session. You can still read the text."
+                            } else {
+                                cloud.speak(say, spoken, 1f, code)
+                            }
                         } else {
                             tts.value?.apply {
                                 language = Locale.forLanguageTag(spoken)
@@ -125,8 +135,11 @@ fun ListenScreen(api: Api, code: String, onBack: () -> Unit) {
                 if (page.status == "ended") { ended = true; break }
             } catch (e: ApiException) {
                 error = e.message
+                delay(1500)
             }
-            delay(1200)
+            // A server that answers at once must not turn this into a tight loop.
+            val spent = System.currentTimeMillis() - started
+            if (spent < 400) delay(800 - spent)
         }
     }
     LaunchedEffect(lines.size) { if (lines.isNotEmpty()) list.animateScrollToItem(lines.lastIndex) }
@@ -214,6 +227,7 @@ fun HostScreen(api: Api, code: String, onBack: () -> Unit) {
     var problem by remember { mutableStateOf<String?>(null) }
     var confirmEnd by remember { mutableStateOf(false) }
     var ending by remember { mutableStateOf(false) }
+    var usage by remember { mutableStateOf<SessionUsage?>(null) }
     val sent = remember { mutableStateListOf<String>() }
 
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
@@ -226,6 +240,7 @@ fun HostScreen(api: Api, code: String, onBack: () -> Unit) {
         }
         localeReady = true
         while (true) {
+            runCatching { usage = api.usage(code) }
             delay(8000)
             runCatching { session = api.get(code) }
         }
@@ -277,6 +292,20 @@ fun HostScreen(api: Api, code: String, onBack: () -> Unit) {
             Text("SESSION CODE", color = Paper.copy(alpha = 0.5f), style = MaterialTheme.typography.labelMedium)
             Text(code, color = Mint, fontSize = 44.sp, fontWeight = FontWeight.Bold, letterSpacing = 6.sp)
             Text("Share this code so people can listen in.", color = Paper.copy(alpha = 0.6f), style = MaterialTheme.typography.bodyMedium)
+        }
+
+        usage?.let { u ->
+            val left = listOfNotNull(u.secondsLeft, u.secondsUntilCap).minOrNull()
+            Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    "Running ${fmtDuration(u.sessionSeconds)}" + (left?.let { " · ${fmtDuration(it)} left" } ?: ""),
+                    color = Paper.copy(alpha = 0.7f), style = MaterialTheme.typography.bodyMedium,
+                )
+                if (u.backupVoice) Text("The local voice is on its backup. Your time isn't being used while that lasts.", color = Mint, style = MaterialTheme.typography.bodyMedium)
+                if (left != null && left < 600 && u.stopped == null) Text("Your time is almost used. Add time under More, Time and plans.", color = Amber, style = MaterialTheme.typography.bodyMedium)
+                if (u.stopped == "out_of_time") Text("Your time has run out, so translation and voice have stopped. Add time and they resume.", color = Rose, style = MaterialTheme.typography.bodyMedium)
+                if (u.stopped == "cap_reached") Text("This session reached the length you chose, so translation and voice have stopped.", color = Rose, style = MaterialTheme.typography.bodyMedium)
+            }
         }
 
         Box(Modifier.weight(1f).fillMaxWidth()) {

@@ -41,8 +41,8 @@ class CloudSpeaker(
         scope.launch { for (item in queue) play(item) }
     }
 
-    fun speak(text: String, language: String, rate: Float) {
-        val audio = scope.async { api.speech(text, language, rate) }
+    fun speak(text: String, language: String, rate: Float, session: String? = null) {
+        val audio = scope.async { api.speech(text, language, rate, session) }
         queue.trySend(Item(generation, audio))
     }
 

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material.icons.filled.SupportAgent
@@ -76,6 +77,7 @@ fun MoreTab(user: AuthUser, onOpen: (Overlay) -> Unit, onSignOut: () -> Unit) {
                 Muted("${user.email} · ${if (user.role == "educator") "Speaker" else "Listener"}")
             }
             if (user.role == "educator") Item(Icons.Filled.Campaign, "Host a session", Overlay.HostHub)
+            Item(Icons.Filled.Payments, "Time and plans", Overlay.Billing)
             Item(Icons.Filled.Translate, "Languages", Overlay.Languages)
             Item(Icons.Filled.Settings, "Settings", Overlay.Settings)
             Item(Icons.Filled.SupportAgent, "Help", Overlay.Help)
@@ -297,6 +299,7 @@ fun TermsScreen(onBack: () -> Unit) = TextPage(
         Block("A prototype in pilot", "Voice Verse is an early product. It may be unavailable at times, and its subtitles and translations may contain mistakes. Do not rely on it for medical, legal or safety-critical communication."),
         Block("Using it fairly", "Only caption speech when you have the right to, and tell people it is happening where that is expected. Do not use Voice Verse to harass, deceive or harm anyone, or to attempt to break the service."),
         Block("Your account", "Keep your password private. You are responsible for what is done with your account."),
+        Block("Payments, time and refunds", "Speakers pay for time, either as a monthly plan or as a number of hours. Listening in text, and with your own device's voice, is free. Time you buy is valid for 30 days from the day you pay. Time not used by then expires, and the money for it is not refundable, so please buy only what you expect to use. Only time a session is live and in use is counted. If the local voice is unavailable and the standard voice takes over, that period is not counted against your time. A listener pass lasts 30 days from payment and is not refundable; the local voice needs both a listener pass and a speaker who turned the local voice on. When your time runs out a session continues for a short grace period, then paid features stop until you add time. Payments are processed by Paystack. If a payment is taken twice by mistake, or we fail to give you the time you paid for, contact us and we will put it right."),
         Block("Content", "You keep ownership of the words you speak and the sessions you create. We process them only to provide the service."),
         Block("Changes", "We may update these terms as the product grows. Continued use means you accept the updated terms."),
     ),

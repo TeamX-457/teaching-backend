@@ -198,7 +198,7 @@ fun JoinTab(feed: Feed, join: JoinState) {
 // ───────────────────────── Host hub ─────────────────────────
 
 @Composable
-fun HostHub(api: Api, onBack: () -> Unit, onOpen: (code: String, live: Boolean) -> Unit) {
+fun HostHub(api: Api, onBack: () -> Unit, onBilling: () -> Unit, onOpen: (code: String, live: Boolean) -> Unit) {
     val scope = rememberCoroutineScope()
     var langs by remember { mutableStateOf<List<LangCfg>>(emptyList()) }
     var mine by remember { mutableStateOf<List<LiveSession>?>(null) }
@@ -207,6 +207,22 @@ fun HostHub(api: Api, onBack: () -> Unit, onOpen: (code: String, live: Boolean) 
     var lang by remember { mutableStateOf("en") }
     var creating by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var tier by remember { mutableStateOf("captions") }
+    var voices by remember { mutableStateOf("1") }
+    var minutes by remember { mutableStateOf("60") }
+    var est by remember { mutableStateOf<Estimate?>(null) }
+    var needTime by remember { mutableStateOf(false) }
+
+    // Start at the best level the speaker has time for.
+    LaunchedEffect(Unit) {
+        runCatching {
+            val b = api.me().balance
+            tier = if (b.local.seconds > 0) "local" else if (b.standard.seconds > 0) "standard" else "captions"
+        }
+    }
+    LaunchedEffect(tier, minutes, voices) {
+        est = runCatching { api.estimate(tier, minutes.toInt(), if (tier == "captions") 1 else voices.toInt()) }.getOrNull()
+    }
 
     LaunchedEffect(Unit) {
         runCatching { langs = api.languages().filter { it.speechRecognition.supported } }
@@ -222,15 +238,42 @@ fun HostHub(api: Api, onBack: () -> Unit, onOpen: (code: String, live: Boolean) 
                 Spacer(Modifier.height(12.dp))
                 ChoiceRow("Where are you?", VENUES, venue) { venue = it }
                 if (langs.isNotEmpty()) LangPicker("Language you will speak", lang, langs, { lang = it })
+                ChoiceRow(
+                    "What your audience gets",
+                    listOf("captions" to "Captions", "standard" to "Standard voice", "local" to "Local voice"),
+                    tier,
+                ) { tier = it }
+                ChoiceRow(
+                    "How long will you speak?",
+                    listOf("30" to "30 min", "60" to "1 hour", "120" to "2 hours", "180" to "3 hours", "300" to "5 hours", "480" to "8 hours", "600" to "10 hours"),
+                    minutes,
+                ) { minutes = it }
+                if (tier != "captions") {
+                    ChoiceRow("Languages spoken aloud at once", listOf("1" to "1", "2" to "2", "3" to "3"), voices) { voices = it }
+                    Muted("Each extra language that speaks aloud uses your time at the same speed.")
+                }
+                est?.let { e ->
+                    Spacer(Modifier.height(8.dp))
+                    Text("This session can use up to ${e.usesHours} h of your time", style = MaterialTheme.typography.titleMedium)
+                    Muted(
+                        if (e.enough) "You have ${e.haveHours} h, so about ${e.leftAfterHours} h would be left. The session stops at the length you chose."
+                        else "You have ${e.haveHours} h. You need about ${e.buyHours} more.",
+                    )
+                    if (!e.enough) androidx.compose.material3.TextButton(onBilling) { Text("Add time") }
+                }
+                if (needTime) {
+                    Muted("You need more time to start this session.")
+                    androidx.compose.material3.TextButton(onBilling) { Text("Add time") }
+                }
                 ErrorLine(error)
                 Spacer(Modifier.height(14.dp))
                 Button(
                     onClick = {
                         if (title.isBlank() || creating) return@Button
-                        creating = true; error = null
+                        creating = true; error = null; needTime = false
                         scope.launch {
-                            try { onOpen(api.create(title.trim(), venue, lang).code, true) }
-                            catch (e: ApiException) { error = e.message }
+                            try { onOpen(api.create(title.trim(), venue, lang, tier, if (tier == "captions") 1 else voices.toInt(), minutes.toInt()).code, true) }
+                            catch (e: ApiException) { if (e.code == "NO_TIME") needTime = true else error = e.message }
                             finally { creating = false }
                         }
                     },

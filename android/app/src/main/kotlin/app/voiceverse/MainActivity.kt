@@ -50,6 +50,7 @@ sealed interface Overlay {
     data class HostLive(val code: String) : Overlay
     data class HistoryDetail(val id: String) : Overlay
     data object HostHub : Overlay
+    data object Billing : Overlay
     data object Languages : Overlay
     data object Settings : Overlay
     data object Help : Overlay
@@ -182,9 +183,10 @@ private fun AppShell(api: Api, store: Store, user: AuthUser, onSignOut: () -> Un
                     is Overlay.SessionLive -> ListenScreen(api, o.code, onBack = back)
                     is Overlay.HostLive -> HostScreen(api, o.code, onBack = back)
                     is Overlay.HistoryDetail -> HistoryDetail(store, o.id, langs, onBack = back)
-                    Overlay.HostHub -> HostHub(api, onBack = back) { code, live ->
+                    Overlay.HostHub -> HostHub(api, onBack = back, onBilling = { overlay = Overlay.Billing }) { code, live ->
                         overlay = if (live) Overlay.HostLive(code) else Overlay.SessionLive(code)
                     }
+                    Overlay.Billing -> BillingScreen(api, user, onBack = back)
                     Overlay.Languages -> LanguagesScreen(api, onBack = back)
                     Overlay.Settings -> SettingsScreen(store, user, api, onBack = back, onSignOut = onSignOut)
                     Overlay.Help -> HelpScreen(onBack = back)
