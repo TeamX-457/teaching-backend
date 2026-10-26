@@ -7,6 +7,8 @@ export const Route = createFileRoute("/privacy")({
     <PublicPage eyebrow="Privacy" title="What we keep, and what we don't." lead="Spoken conversations can be sensitive. This is how Voice Verse handles them.">
       <DraftNotice />
       <Prose>
+        <h2>Payments</h2>
+        <p>Payments are made on Paystack's own page. We receive your name, email, the amount and whether it succeeded, and keep that record to give you your time and for our accounts. We never see or store your card details.</p>
         <h2>Audio</h2>
         <p>Voice Verse does not record or store audio. Your browser turns speech into text while you listen. Depending on your browser, that step may be performed by your browser vendor's speech service, which has its own privacy policy.</p>
         <h2>Text from your own listening sessions</h2>

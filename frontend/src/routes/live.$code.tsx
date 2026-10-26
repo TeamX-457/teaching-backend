@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Star, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { LiveStage } from "@/components/vv/LiveStage";
 import { LangSelect, ProblemBanner } from "@/components/vv/fields";
 import { Logo } from "@/components/vv/primitives";
-import { api, ApiError, type LiveCaption, type LiveSession } from "@/lib/api";
+import { api, ApiError, type ListenerAccess, type LiveCaption, type LiveSession, type SessionBilling } from "@/lib/api";
 import { useLanguages } from "@/lib/auth";
 import type { Stage } from "@/lib/listening";
 import { useSpeaker } from "@/lib/listening";
@@ -34,6 +34,8 @@ function Viewer() {
   const [offline, setOffline] = useState(false);
   const [audio, setAudio] = useState(false);
   const [size, setSize] = useState(Math.max(settings.subtitleSize, 24));
+  const [paid, setPaid] = useState<SessionBilling | undefined>();
+  const [me, setMe] = useState<ListenerAccess | null>(null);
   const after = useRef(0);
   const langRef = useRef(lang);
   langRef.current = lang;
@@ -41,11 +43,18 @@ function Viewer() {
   const langs = data?.languages ?? [];
   const toCfg = langs.find((l) => l.code === lang);
   const translating = !!info && lang !== info.sourceLang;
-  const ttsOk = translating && !!toCfg?.textToSpeech.supported && (!!toCfg.textToSpeech.cloud || typeof speechSynthesis !== "undefined");
+  const billing = paid ?? info?.billing;
+  // Hausa, Yoruba and Igbo voices come from the server and need a host who turned the voice on.
+  const cloudVoiceOff = !!toCfg?.textToSpeech.cloud && !!billing && billing.voice === "none";
+  const ttsOk = translating && !cloudVoiceOff && !!toCfg?.textToSpeech.supported && (!!toCfg.textToSpeech.cloud || typeof speechSynthesis !== "undefined");
   const speaker = useSpeaker({
     enabled: audio && ttsOk, locale: toCfg?.textToSpeech.locale, rate: settings.playbackRate, onProblem: () => {},
-    cloudLang: toCfg?.textToSpeech.cloud ? toCfg.code : undefined,
+    cloudLang: toCfg?.textToSpeech.cloud ? toCfg.code : undefined, session: code.toUpperCase(),
   });
+  const localOffered = billing?.voice === "local" && !!toCfg?.textToSpeech.cloud;
+  const needsPass = localOffered && !!me && !me.pass && me.trialSecondsLeft <= 0;
+
+  useEffect(() => { api.billing.me().then((r) => setMe(r.listener)).catch(() => {}); }, [audio]);
 
   useEffect(() => {
     api.live.get(code.toUpperCase()).then((r) => { setInfo(r.session); setStatus(r.session.status); api.live.join(code).catch(() => {}); })
@@ -56,23 +65,33 @@ function Viewer() {
     if (!info) return;
     after.current = 0; setCaps([]);
     let stop = false;
-    const tick = async () => {
-      try {
-        const l = langRef.current !== info.sourceLang ? langRef.current : undefined;
-        const r = await api.live.captions(code, after.current, l);
-        if (stop) return;
-        setOffline(false); setStatus(r.status);
-        if (r.captions.length) {
-          after.current = r.captions[r.captions.length - 1]!.seq;
-          setCaps((c) => [...c, ...r.captions]);
-          const t = r.captions[r.captions.length - 1]!;
-          if (t.translatedText) speaker.say(t.translatedText);
+    // Real time: each request waits on the server and is answered the moment the speaker's next line arrives,
+    // then the next one starts straight away. No fixed polling delay.
+    const run = async () => {
+      let first = true;
+      while (!stop) {
+        try {
+          const l = langRef.current !== info.sourceLang ? langRef.current : undefined;
+          const r = await api.live.captions(code, after.current, l, first ? 0 : 20);
+          first = false;
+          if (stop) return;
+          setOffline(false); setStatus(r.status); if (r.billing) setPaid(r.billing);
+          if (r.captions.length) {
+            after.current = r.captions[r.captions.length - 1]!.seq;
+            setCaps((c) => [...c, ...r.captions]);
+            const t = r.captions[r.captions.length - 1]!;
+            if (t.translatedText) speaker.say(t.translatedText);
+          }
+          if (r.status !== "live") return;
+        } catch {
+          if (stop) return;
+          setOffline(true);
+          await new Promise((res) => setTimeout(res, 1500));
         }
-      } catch { if (!stop) setOffline(true); }
+      }
     };
-    tick();
-    const id = setInterval(() => { if (status === "live") tick(); }, 1500);
-    return () => { stop = true; clearInterval(id); };
+    void run();
+    return () => { stop = true; };
   }, [info, lang, code]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (missing) {
@@ -119,7 +138,24 @@ function Viewer() {
                 <Label htmlFor="aud" className="flex items-center gap-2 text-sm font-medium">{audio && ttsOk ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />} Read aloud</Label>
                 <Switch id="aud" checked={audio && ttsOk} onCheckedChange={setAudio} disabled={!ttsOk} />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">{ttsOk ? "Use earphones in a shared room." : `Spoken ${toCfg?.name ?? "output"} isn't available on this device yet.`}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {cloudVoiceOff
+                  ? `The speaker hasn't turned on spoken ${toCfg?.name ?? "voice"} for this session. You can still read the subtitles.`
+                  : ttsOk ? "Use earphones in a shared room." : `Spoken ${toCfg?.name ?? "output"} isn't available on this device yet.`}
+              </p>
+              {localOffered && audio && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {me?.pass ? "Local voice is on, with your listener pass."
+                    : !me?.signedIn ? <>The real local voice needs a free account. <Link to="/login" className="text-primary underline underline-offset-4">Sign in</Link></>
+                    : me.trialSecondsLeft > 0 ? `Enjoy the free local-voice trial: about ${Math.max(1, Math.round(me.trialSecondsLeft / 60))} min left.`
+                    : null}
+                </p>
+              )}
+              {needsPass && (
+                <p className="mt-2 rounded-lg bg-secondary px-3 py-2 text-xs">
+                  Your free local-voice trial is over, so you're hearing the standard voice. <Link to="/app/billing" className="font-medium text-primary underline underline-offset-4">Get the listener pass</Link> to keep the real local voice.
+                </p>
+              )}
             </div>
           </div>
 

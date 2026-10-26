@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { Home, Mic, History, Languages, Settings, LifeBuoy, Radio, KeyRound, LogOut, Code2 } from "lucide-react";
+import { Home, Mic, History, Languages, Settings, LifeBuoy, Radio, KeyRound, LogOut, Code2, Wallet } from "lucide-react";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Logo } from "@/components/vv/primitives";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ const NAV = [
   { to: "/app/listen", label: "Start listening", icon: Mic },
   { to: "/app/join", label: "Join a session", icon: KeyRound },
   { to: "/app/host", label: "Host a session", icon: Radio, educatorOnly: true },
+  { to: "/app/billing", label: "Time and plans", icon: Wallet },
   { to: "/app/history", label: "History", icon: History },
   { to: "/app/languages", label: "Languages", icon: Languages },
   { to: "/app/developers", label: "Developers", icon: Code2 },

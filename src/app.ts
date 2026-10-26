@@ -10,6 +10,7 @@ import liveRoutes from "@/routes/live.route";
 import translateRoutes from "@/routes/translate.route";
 import contactRoutes from "@/routes/contact.route";
 import keysRoutes from "@/routes/keys.route";
+import billingRoutes from "@/routes/billing.route";
 import paymentsRoutes from "@/routes/payments.route";
 import speechRoutes from "@/routes/speech.route";
 import v1Routes from "@/routes/v1.route";
@@ -102,6 +103,7 @@ export const buildApp = async (opts = {}) => {
   app.register(contactRoutes, { prefix: "/api" });
   app.register(speechRoutes, { prefix: "/api" });
   app.register(paymentsRoutes, { prefix: "/api/payments" });
+  app.register(billingRoutes, { prefix: "/api/billing" });
   // One-time support payments through the shared Paystack account (references start VOICEVERSE-).
   app.register(supportRoutes, { prefix: "/api/support" });
   // Developer API: people manage keys under /api/keys; programs call /v1 with a key.

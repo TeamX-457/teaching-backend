@@ -1,5 +1,10 @@
 import { LANGUAGES, checkTranslationPair, getLanguage } from "@/config/languages";
+import { audioSeconds, billingEnforced, meter, paidFeaturesOn, soloCharge, type Clock } from "@/services/billing.service";
+import { auth } from "@/lib/auth";
+import { fromNodeHeaders } from "better-auth/node";
 import { liveService } from "@/services/live.service";
+import { spitchAvailable } from "@/services/spitch.service";
+import { normalizeJoinCode } from "@/utils/join-code";
 import {
   translate,
   translationProviderConfigured,
@@ -13,6 +18,8 @@ const bodySchema = z.object({
   text: z.string().trim().min(1).max(1000),
   source: z.string().trim().toLowerCase().min(2).max(8),
   target: z.string().trim().toLowerCase().min(2).max(8),
+  // The live session this is for. Once billing is on, translating needs a session whose host has time left.
+  session: z.string().trim().min(3).max(12).optional(),
 });
 
 // Public endpoint that may call a paid provider: cap it per client.
@@ -36,9 +43,25 @@ async function translateRoutes(app: FastifyInstance) {
     if (!parsed.success) {
       return res.code(400).send({ error: "Invalid request", issues: parsed.error.issues });
     }
-    const { text, source, target } = parsed.data;
+    const { text, source, target, session: sessionCode } = parsed.data;
     const pair = checkTranslationPair(source, target);
     if (!pair.ok) return res.code(422).send({ error: pair.message, code: pair.code });
+
+    const row = sessionCode ? await liveService.getByCode(normalizeJoinCode(sessionCode)) : undefined;
+    if (row && (billingEnforced() || row.tier !== "free")) {
+      const clock: Clock = { ...row };
+      await meter(row.hostId, clock, liveService.clockStore(row.id), { localUp: spitchAvailable() });
+      if (!paidFeaturesOn(clock)) {
+        return res.code(402).send({ error: "The host's time has run out, so translation has stopped.", code: "OUT_OF_TIME" });
+      }
+    } else if (!row && billingEnforced()) {
+      // Translating for yourself, with no live session: it comes out of your own time.
+      const me = (await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }))?.user;
+      if (!me) return res.code(401).send({ error: "Sign in to translate.", code: "SIGN_IN_REQUIRED" });
+      if (!(await soloCharge(me.id, audioSeconds(text), ["captions"]))) {
+        return res.code(402).send({ error: "You have no translation time left. Buy hours to carry on.", code: "OUT_OF_TIME" });
+      }
+    }
 
     // The glossary is an enhancement: translation still works if the DB is unreachable.
     const glossary = await liveService.getGlossary(source, target).catch(() => []);

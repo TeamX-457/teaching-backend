@@ -1,6 +1,7 @@
 import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/config/db/db";
-import { sellable, type Plan } from "@/config/pricing";
+import { resolvePlan, sellable, type Plan } from "@/config/pricing";
+import { grantForPayment, type BillingStore } from "@/services/billing.service";
 import { payments } from "@/models/schema";
 import { APP_CODE, isOurs, makeReference, paystackMetadata } from "@/services/paystack.naming";
 import {
@@ -59,12 +60,19 @@ export class PaymentError extends Error {
 /** What happens after a successful payment, by plan id. Add an entry to grant something. Runs once per payment. */
 export const fulfilments: Record<string, (payment: PaymentRow) => Promise<void>> = {};
 
+/** Hours, bundles and listener passes become time or a pass in the billing ledger. A payment can only grant once. */
+const defaultFulfilment = (billing?: BillingStore) => async (payment: PaymentRow) => {
+  await grantForPayment({ reference: payment.reference, userId: payment.userId, planId: payment.planId, paidAt: payment.paidAt }, billing);
+};
+
 export async function createCheckout(
   input: { user: { id: string; email: string }; planId: string; callbackUrl: string },
   deps: { store?: PaymentStore; plans?: Plan[] } = {},
 ) {
   const store = deps.store ?? dbStore;
-  const plan = sellable(deps.plans).find((p) => p.id === input.planId);
+  const plan = deps.plans
+    ? sellable(deps.plans).find((p) => p.id === input.planId)
+    : sellable([resolvePlan(input.planId)].filter((p): p is Plan => Boolean(p)))[0];
   if (!plan) throw new PaymentError("That plan is not available.", "PLAN_UNAVAILABLE", 404);
 
   const reference = makeReference(plan.purpose); // VOICEVERSE-<PURPOSE>-<date>-<id>
@@ -98,7 +106,7 @@ export async function createCheckout(
  */
 export async function settle(
   reference: string,
-  deps: { store?: PaymentStore; verify?: (ref: string) => Promise<PaystackTransaction> } = {},
+  deps: { store?: PaymentStore; verify?: (ref: string) => Promise<PaystackTransaction>; billing?: BillingStore } = {},
 ): Promise<PaymentRow | null> {
   if (!isOurs(reference)) return null;
   const store = deps.store ?? dbStore;
@@ -122,7 +130,7 @@ export async function settle(
       paidAt: tx.paid_at ? new Date(tx.paid_at) : new Date(),
       gatewayResponse: tx.gateway_response ?? null,
     });
-    if (first) await fulfilments[first.planId]?.(first);
+    if (first) await (fulfilments[first.planId] ?? defaultFulfilment(deps.billing))(first);
     return first ?? (await store.byReference(reference)) ?? row;
   }
   if (tx.status === "failed" || tx.status === "reversed") {
@@ -135,7 +143,7 @@ export async function settle(
 /** A Paystack webhook event. Events for other products on the shared account are ignored. */
 export async function handleWebhookEvent(
   event: { event?: string; data?: { reference?: string; transaction_reference?: string } },
-  deps: { store?: PaymentStore; verify?: (ref: string) => Promise<PaystackTransaction> } = {},
+  deps: { store?: PaymentStore; verify?: (ref: string) => Promise<PaystackTransaction>; billing?: BillingStore } = {},
 ): Promise<{ handled: boolean; reason?: string }> {
   const store = deps.store ?? dbStore;
   const reference = event.data?.reference ?? event.data?.transaction_reference;

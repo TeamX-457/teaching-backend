@@ -17,6 +17,7 @@ import { createRateLimiter } from "@/utils/rate-limit";
 
 // Where Paystack sends the customer after paying: this API's own confirmation page, so it works with no website page.
 const PUBLIC_API_URL = () => (process.env.PUBLIC_API_URL || "https://voiceverse-rose.vercel.app").replace(/\/$/, "");
+const SITE_URL = () => (process.env.PUBLIC_SITE_URL || "https://voiceverse-app.vercel.app").replace(/\/$/, "");
 const escapeHtml = (v: string) =>
   v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -88,7 +89,7 @@ async function paymentsRoutes(app: FastifyInstance) {
       .send(
         `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">` +
           `<title>${title} | Voice Verse</title></head><body style="font-family:system-ui,sans-serif;max-width:28rem;margin:4rem auto;padding:0 1rem;text-align:center">` +
-          `<h1>${title}</h1><p>${message}</p><p style="color:#666;font-size:.85rem">Reference: ${escapeHtml(reference.slice(0, 120))}</p></body></html>`,
+          `<h1>${title}</h1><p>${message}</p><p><a href="${SITE_URL()}/app/billing" style="display:inline-block;padding:.7rem 1.2rem;border-radius:.6rem;background:#111;color:#fff;text-decoration:none">Back to Voice Verse</a></p><p style="color:#666;font-size:.85rem">Reference: ${escapeHtml(reference.slice(0, 120))}</p></body></html>`,
       );
   });
 

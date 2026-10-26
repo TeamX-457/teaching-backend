@@ -95,7 +95,7 @@ export function useRecognizer(opts: {
  * With `cloudLang` (Hausa, Yoruba, Igbo) the audio comes from the server, which pronounces those languages
  * properly; browsers have no voice for them and read the letters out. Otherwise the browser's own voice is used.
  */
-export function useSpeaker(opts: { enabled: boolean; locale: string | undefined; rate: number; onProblem: (p: Problem) => void; cloudLang?: string | undefined }) {
+export function useSpeaker(opts: { enabled: boolean; locale: string | undefined; rate: number; onProblem: (p: Problem) => void; cloudLang?: string | undefined; session?: string | undefined }) {
   const [speaking, setSpeaking] = useState(false);
   const [paused, setPaused] = useState(false);
   const queue = useRef<string[]>([]);
@@ -118,7 +118,7 @@ export function useSpeaker(opts: { enabled: boolean; locale: string | undefined;
       fetch("/api/speech", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, language: cloud, voice: "female", rate: o.current.rate }),
+        body: JSON.stringify({ text, language: cloud, voice: "female", rate: o.current.rate, ...(o.current.session ? { session: o.current.session } : {}) }),
       })
         .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
         .then((blob) => {

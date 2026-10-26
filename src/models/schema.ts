@@ -176,6 +176,21 @@ export const liveSessions = pgTable(
     sourceLang: text("source_lang").default("en").notNull(),
     status: liveSessionStatusEnum("status").default("live").notNull(),
     listenerCount: integer("listener_count").default(0).notNull(),
+    // What the host paid for: free | captions | standard | local (see src/config/pricing.ts)
+    tier: text("tier").default("free").notNull(),
+    // How many languages speak aloud at once. Each one uses the host's time at the same rate.
+    voiceLanguages: integer("voice_languages").default(1).notNull(),
+    // The host's chosen length. The session stops at this length.
+    capSeconds: integer("cap_seconds"),
+    // Time counted so far, and time not counted because the local voice was down (never charged).
+    meteredSeconds: integer("metered_seconds").default(0).notNull(),
+    pausedSeconds: integer("paused_seconds").default(0).notNull(),
+    graceSeconds: integer("grace_seconds").default(0).notNull(),
+    lastMeterAt: timestamp("last_meter_at"),
+    // While in the future, the local voice is on its backup and time is not charged.
+    fallbackUntil: timestamp("fallback_until"),
+    // out_of_time | cap_reached, once paid features have stopped
+    stoppedReason: text("stopped_reason"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     endedAt: timestamp("ended_at"),
   },
@@ -295,6 +310,46 @@ export const payments = pgTable(
     index("payments_status_idx").on(table.status),
   ],
 );
+
+// Time a host has bought, in seconds. One row per grant: a payment can create several (a bundle). It expires, and
+// whatever is unused at expiry is gone for good (the terms say so). `reference` is the payment that created it,
+// or FREE-YYYYMM for a speaker's free monthly time.
+export const creditGrants = pgTable(
+  "credit_grants",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+    reference: text("reference").notNull(),
+    tier: text("tier").notNull(),
+    secondsTotal: integer("seconds_total").notNull(),
+    secondsUsed: integer("seconds_used").default(0).notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("credit_grants_ref_tier_idx").on(table.reference, table.tier),
+    index("credit_grants_user_idx").on(table.userId),
+  ],
+);
+
+// A listener pass (paid) and the free local-voice trial (used up once, never renewed).
+export const listenerPasses = pgTable(
+  "listener_passes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+    reference: text("reference").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("listener_passes_ref_idx").on(table.reference), index("listener_passes_user_idx").on(table.userId)],
+);
+
+export const listenerTrials = pgTable("listener_trials", {
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).primaryKey(),
+  secondsUsed: integer("seconds_used").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 
 export const contactMessages = pgTable("contact_messages", {
   id: uuid("id").defaultRandom().primaryKey(),

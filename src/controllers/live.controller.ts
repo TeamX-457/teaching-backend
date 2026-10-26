@@ -1,7 +1,18 @@
 import { checkTranslationPair, getLanguage } from "@/config/languages";
 import { auth } from "@/lib/auth";
 import { invitesService } from "@/services/invites.service";
+import {
+  balanceFor,
+  billingEnforced,
+  meter,
+  paidFeaturesOn,
+  secondsAvailable,
+  type Clock,
+} from "@/services/billing.service";
+import { waitForCaption } from "@/services/caption-hub";
 import { liveService } from "@/services/live.service";
+import { spitchAvailable } from "@/services/spitch.service";
+import { MAX_VOICE_LANGUAGES, type Tier } from "@/config/pricing";
 import { translate } from "@/services/translation.service";
 import { normalizeJoinCode } from "@/utils/join-code";
 import { fromNodeHeaders } from "better-auth/node";
@@ -16,6 +27,10 @@ const createSessionSchema = z.object({
     .enum(["classroom", "conference", "church", "town_hall", "other"])
     .default("classroom"),
   sourceLang: langSchema.default("en"),
+  // What the host is paying for, how many languages speak aloud, and how long the session may run.
+  tier: z.enum(["captions", "standard", "local"]).optional(),
+  voiceLanguages: z.number().int().min(1).max(MAX_VOICE_LANGUAGES).default(1),
+  capMinutes: z.number().int().min(5).max(720).optional(),
 });
 
 const captionSchema = z.object({ text: z.string().trim().min(1).max(1000) });
@@ -23,6 +38,8 @@ const captionSchema = z.object({ text: z.string().trim().min(1).max(1000) });
 const captionsQuerySchema = z.object({
   after: z.coerce.number().int().min(0).default(0),
   lang: langSchema.optional(),
+  // Seconds to wait for a new caption before answering empty. 0 answers at once (the old behaviour).
+  wait: z.coerce.number().int().min(0).max(20).default(0),
 });
 
 const feedbackSchema = z.object({
@@ -60,6 +77,21 @@ function invalid(res: FastifyReply, error: z.ZodError) {
   return res.code(400).send({ error: "Invalid request", issues: error.issues });
 }
 
+/** The session's clock, counted up to now. Charges the host for the time since the last look. */
+async function meterSession(session: NonNullable<Awaited<ReturnType<typeof liveService.getByCode>>>) {
+  const clock: Clock = { ...session, tier: session.tier };
+  const r = await meter(session.hostId, clock, liveService.clockStore(session.id), { localUp: spitchAvailable() });
+  return { clock, secondsLeft: r.secondsLeft };
+}
+
+/** What listeners may know about how a session is paid for. Nothing about money. */
+const publicBilling = (c: Pick<Clock, "tier" | "stoppedReason" | "status">) => ({
+  tier: c.tier,
+  voice: !paidFeaturesOn(c) ? "none" : c.tier === "local" ? "local" : c.tier === "standard" ? "standard" : "none",
+  translation: billingEnforced() ? paidFeaturesOn(c) : true,
+  stopped: c.stoppedReason,
+});
+
 export const liveController = {
   async createSession(req: FastifyRequest, res: FastifyReply) {
     const parsed = createSessionSchema.safeParse(req.body);
@@ -67,8 +99,48 @@ export const liveController = {
     const hostId = await currentUserId(req);
     if (!hostId) return res.code(401).send({ error: "Unauthorized" });
 
-    const session = await liveService.createSession({ ...parsed.data, hostId });
+    // A session runs at the level the host chose, and needs time bought at that level (everyone has a little free
+    // captions time each month). While billing is not switched on, a host with no time still gets a plain session.
+    const wanted: Tier = parsed.data.tier ?? "captions";
+    const available = await secondsAvailable(hostId, wanted);
+    const haveTime = available >= 10 * 60;
+    if (!haveTime && (billingEnforced() || parsed.data.tier)) {
+      return res.code(402).send({
+        error: "You need more time for that. Buy hours or a plan to start this session.",
+        code: "NO_TIME",
+        balance: await balanceFor(hostId),
+      });
+    }
+    const { capMinutes, tier: _t, ...rest } = parsed.data;
+    const session = await liveService.createSession({
+      ...rest,
+      hostId,
+      tier: haveTime ? wanted : "free",
+      capSeconds: capMinutes ? capMinutes * 60 : null,
+    });
     return res.code(201).send({ session });
+  },
+
+  /** For the host: how much time is left, the session's length so far, and when it will stop. */
+  async usage(req: FastifyRequest<CodeParams>, res: FastifyReply) {
+    const hostId = await currentUserId(req);
+    if (!hostId) return res.code(401).send({ error: "Unauthorized" });
+    const found = await liveService.getByCode(normalizeJoinCode(req.params.code));
+    if (!found || found.hostId !== hostId) return res.code(404).send({ error: "Session not found" });
+    const { clock } = await meterSession(found);
+    const left = found.tier === "free" ? null : await secondsAvailable(hostId, found.tier as Tier);
+    return res.send({
+      tier: clock.tier,
+      voiceLanguages: clock.voiceLanguages,
+      capSeconds: clock.capSeconds,
+      sessionSeconds: clock.meteredSeconds,
+      pausedSeconds: clock.pausedSeconds,
+      secondsLeft: left,
+      secondsUntilCap: clock.capSeconds ? Math.max(0, clock.capSeconds - clock.meteredSeconds) : null,
+      backupVoice: Boolean(clock.fallbackUntil && clock.fallbackUntil > new Date()),
+      stopped: clock.stoppedReason,
+      balance: await balanceFor(hostId),
+    });
   },
 
   async mySessions(req: FastifyRequest, res: FastifyReply) {
@@ -82,8 +154,8 @@ export const liveController = {
       normalizeJoinCode(req.params.code),
     );
     if (!session) return res.code(404).send({ error: "Session not found" });
-    const { hostId: _hostId, ...publicSession } = session;
-    return res.send({ session: publicSession });
+    const { hostId: _hostId, voiceLanguages: _v, capSeconds: _c, meteredSeconds: _m, pausedSeconds: _p, graceSeconds: _g, lastMeterAt: _l, fallbackUntil: _f, tier: _t, stoppedReason: _s, ...publicSession } = session;
+    return res.send({ session: { ...publicSession, billing: publicBilling(session) } });
   },
 
   async joinSession(req: FastifyRequest<CodeParams>, res: FastifyReply) {
@@ -123,23 +195,38 @@ export const liveController = {
       return res.code(409).send({ error: "Session has ended" });
     }
     const caption = await liveService.addCaption(session.id, parsed.data.text);
-    return res.code(201).send({ caption });
+    const { clock, secondsLeft } = await meterSession(session);
+    return res.code(201).send({
+      caption,
+      billing: { tier: clock.tier, secondsLeft, stopped: clock.stoppedReason, capReached: clock.stoppedReason === "cap_reached" },
+    });
   },
 
   // Listeners poll this with the last `seq` they have seen.
   async getCaptions(req: FastifyRequest<CodeParams>, res: FastifyReply) {
     const parsed = captionsQuerySchema.safeParse(req.query);
     if (!parsed.success) return invalid(res, parsed.error);
-    const { after, lang } = parsed.data;
+    const { after, lang, wait } = parsed.data;
 
-    const session = await liveService.getByCode(
+    let session = await liveService.getByCode(
       normalizeJoinCode(req.params.code),
     );
     if (!session) return res.code(404).send({ error: "Session not found" });
 
-    const rows = await liveService.getCaptions(session.id, after);
+    let rows = await liveService.getCaptions(session.id, after);
+    if (!rows.length && wait > 0 && session.status === "live") {
+      // Nothing new yet: hold the request and answer the moment the speaker's next line arrives.
+      const id = session.id;
+      const arrived = await waitForCaption(id, after, wait * 1000, (sid) => liveService.latestSeq(sid));
+      if (arrived) rows = await liveService.getCaptions(id, after);
+      session = (await liveService.getByCode(normalizeJoinCode(req.params.code))) ?? session;
+    }
+    // Listeners fetching captions is what keeps the clock moving while the host is quiet.
+    const { clock } = await meterSession(session);
+    // Translation costs money: it runs only while the host's time is on (or while billing is not switched on yet).
+    const mayTranslate = billingEnforced() ? paidFeaturesOn(clock) : true;
 
-    const target = lang && lang !== session.sourceLang ? lang : undefined;
+    const target = mayTranslate && lang && lang !== session.sourceLang ? lang : undefined;
     if (target) {
       const pair = checkTranslationPair(session.sourceLang, target);
       if (!pair.ok) {
@@ -174,7 +261,7 @@ export const liveController = {
       }),
     );
 
-    return res.send({ status: session.status, captions });
+    return res.send({ status: session.status, captions, billing: publicBilling(clock) });
   },
 
   async addFeedback(req: FastifyRequest, res: FastifyReply) {

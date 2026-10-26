@@ -41,6 +41,9 @@ export type LangCfg = {
 };
 export type AuthUser = { id: string; name: string; email: string; role: "educator" | "student" };
 export type VenueType = "classroom" | "conference" | "church" | "town_hall" | "other";
+export type Tier = "captions" | "standard" | "local";
+/** What listeners may know about how a session is paid for. Never any money. */
+export type SessionBilling = { tier: string; voice: "none" | "standard" | "local"; translation: boolean; stopped: string | null };
 export type LiveSession = {
   id: string;
   code: string;
@@ -51,7 +54,25 @@ export type LiveSession = {
   hostName?: string | null;
   listenerCount?: number;
   createdAt: string;
+  billing?: SessionBilling;
 };
+export type Balance = Record<Tier, { seconds: number; nextExpiry: string | null }> & { nothingBoughtYet: boolean };
+export type ListenerAccess = { pass: boolean; passUntil: string | null; trialSecondsLeft: number; signedIn: boolean };
+export type SessionUsage = {
+  tier: string; voiceLanguages: number; capSeconds: number | null; sessionSeconds: number; pausedSeconds: number;
+  secondsLeft: number | null; secondsUntilCap: number | null; backupVoice: boolean; stopped: string | null; balance: Balance;
+};
+export type HostBilling = { tier: string; secondsLeft: number | null; stopped: string | null; capReached: boolean };
+export type PlanInfo = { id: string; event: "sermon" | "service" | "conference" | "classroom"; tier: Tier; name: string; hours: number; amount: number; about: string; includes: { tier: Tier; hours: number }[] };
+export type Pricing = {
+  currency: "NGN";
+  levels: { tier: Tier; name: string; about: string }[];
+  hours: { min: number; max: number; dayHours: number; choices: number[]; prices: Record<Tier, Record<string, number>>; bulk: { fromHours: number; discountPercent: number } };
+  plans: PlanInfo[];
+  listener: { id: string; amount: number; days: number; trialMinutes: number; about: string };
+  rules: { validDays: number; refundable: boolean; graceMinutes: number; extraVoiceLanguages: string };
+};
+export type Estimate = { usesHours: number; haveHours: number; leftAfterHours: number; enough: boolean; buyHours: number; buyPrice: number; buyPlan: string | null };
 export type LiveCaption = {
   id: string;
   seq: number;
@@ -72,7 +93,7 @@ export type TranslateResult = {
 
 export const api = {
   languages: () => request<{ languages: LangCfg[]; translationProviderConfigured: boolean }>("/api/languages"),
-  translate: (b: { text: string; source: string; target: string }) =>
+  translate: (b: { text: string; source: string; target: string; session?: string }) =>
     request<TranslateResult>("/api/translate", { method: "POST", body: b }),
 
   auth: {
@@ -82,6 +103,14 @@ export const api = {
     signUp: (b: { name: string; email: string; password: string; role: "educator" | "student" }) =>
       request<{ user: AuthUser }>("/api/auth/sign-up/email", { method: "POST", body: b }),
     signOut: () => request<unknown>("/api/auth/sign-out", { method: "POST", body: {} }),
+  },
+
+  billing: {
+    pricing: () => request<Pricing>("/api/billing/pricing"),
+    me: () => request<{ balance: Balance; listener: ListenerAccess }>("/api/billing/me"),
+    estimate: (b: { tier: Tier; minutes: number; voiceLanguages: number }) => request<Estimate>("/api/billing/estimate", { method: "POST", body: b }),
+    /** Starts a payment and returns the Paystack page to send the person to. */
+    checkout: (plan: string) => request<{ reference: string; authorizationUrl: string }>("/api/payments/checkout", { method: "POST", body: { plan } }),
   },
 
   keys: {
@@ -94,23 +123,24 @@ export const api = {
     request<{ ok: boolean }>("/api/contact", { method: "POST", body: b }),
 
   live: {
-    create: (b: { title: string; venueType: VenueType; sourceLang: string }) =>
+    create: (b: { title: string; venueType: VenueType; sourceLang: string; tier?: Tier; voiceLanguages?: number; capMinutes?: number }) =>
       request<{ session: LiveSession }>("/api/live/sessions", { method: "POST", body: b }),
     mine: () => request<{ sessions: LiveSession[] }>("/api/live/sessions/mine"),
     get: (code: string) => request<{ session: LiveSession }>(`/api/live/sessions/${encodeURIComponent(code)}`),
     join: (code: string) => request<{ ok: boolean }>(`/api/live/sessions/${encodeURIComponent(code)}/join`, { method: "POST", body: {} }),
     end: (code: string) => request<{ session: LiveSession }>(`/api/live/sessions/${encodeURIComponent(code)}/end`, { method: "POST", body: {} }),
     addCaption: (code: string, text: string) =>
-      request<{ caption: { seq: number } }>(`/api/live/sessions/${encodeURIComponent(code)}/captions`, { method: "POST", body: { text } }),
+      request<{ caption: { seq: number }; billing?: HostBilling }>(`/api/live/sessions/${encodeURIComponent(code)}/captions`, { method: "POST", body: { text } }),
+    usage: (code: string) => request<SessionUsage>(`/api/live/sessions/${encodeURIComponent(code)}/usage`),
     invites: (code: string) => request<{ invites: Invite[] }>(`/api/live/sessions/${encodeURIComponent(code)}/invites`),
     invite: (code: string, identifier: string) =>
       request<{ invite: Invite }>(`/api/live/sessions/${encodeURIComponent(code)}/invites`, { method: "POST", body: { identifier } }),
     removeInvite: (code: string, id: string) =>
       request<{ ok: boolean }>(`/api/live/sessions/${encodeURIComponent(code)}/invites/${encodeURIComponent(id)}`, { method: "DELETE" }),
     invited: () => request<{ sessions: InvitedSession[] }>("/api/live/invited"),
-    captions: (code: string, after: number, lang?: string) =>
-      request<{ status: "live" | "ended"; captions: LiveCaption[] }>(
-        `/api/live/sessions/${encodeURIComponent(code)}/captions?after=${after}${lang ? `&lang=${encodeURIComponent(lang)}` : ""}`,
+    captions: (code: string, after: number, lang?: string, wait = 0) =>
+      request<{ status: "live" | "ended"; captions: LiveCaption[]; billing?: SessionBilling }>(
+        `/api/live/sessions/${encodeURIComponent(code)}/captions?after=${after}${lang ? `&lang=${encodeURIComponent(lang)}` : ""}${wait ? `&wait=${wait}` : ""}`,
       ),
     feedback: (b: { code?: string | undefined; rating: number; comment?: string | undefined }) =>
       request<unknown>("/api/live/feedback", { method: "POST", body: b }),

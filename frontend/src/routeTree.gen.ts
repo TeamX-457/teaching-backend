@@ -23,6 +23,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppBillingRouteImport } from './routes/app.billing'
 import { Route as AppDevelopersRouteImport } from './routes/app.developers'
 import { Route as AppHelpRouteImport } from './routes/app.help'
 import { Route as AppHistoryRouteImport } from './routes/app.history'
@@ -104,6 +105,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDevelopersRoute = AppDevelopersRouteImport.update({
   id: '/developers',
   path: '/developers',
@@ -169,6 +175,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/developers': typeof AppDevelopersRoute
   '/app/help': typeof AppHelpRoute
   '/app/history': typeof AppHistoryRouteWithChildren
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/developers': typeof AppDevelopersRoute
   '/app/help': typeof AppHelpRoute
   '/app/history': typeof AppHistoryRouteWithChildren
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
+  '/app/billing': typeof AppBillingRoute
   '/app/developers': typeof AppDevelopersRoute
   '/app/help': typeof AppHelpRoute
   '/app/history': typeof AppHistoryRouteWithChildren
@@ -249,6 +258,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/billing'
     | '/app/developers'
     | '/app/help'
     | '/app/history'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/billing'
     | '/app/developers'
     | '/app/help'
     | '/app/history'
@@ -300,6 +311,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/signup'
     | '/terms'
+    | '/app/billing'
     | '/app/developers'
     | '/app/help'
     | '/app/history'
@@ -430,6 +442,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/billing': {
+      id: '/app/billing'
+      path: '/billing'
+      fullPath: '/app/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/developers': {
       id: '/app/developers'
       path: '/developers'
@@ -516,6 +535,7 @@ const AppHistoryRouteWithChildren = AppHistoryRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppBillingRoute: typeof AppBillingRoute
   AppDevelopersRoute: typeof AppDevelopersRoute
   AppHelpRoute: typeof AppHelpRoute
   AppHistoryRoute: typeof AppHistoryRouteWithChildren
@@ -528,6 +548,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBillingRoute: AppBillingRoute,
   AppDevelopersRoute: AppDevelopersRoute,
   AppHelpRoute: AppHelpRoute,
   AppHistoryRoute: AppHistoryRouteWithChildren,

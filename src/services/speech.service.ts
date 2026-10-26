@@ -1,5 +1,5 @@
 import { PRONUNCIATION_LANGS, sentenceToSsml, type PronLang } from "@/services/pronunciation";
-import { spitchAvailable, spitchSpeaks, speakWithSpitch } from "@/services/spitch.service";
+import { spitchAvailable, spitchConfigured, spitchSpeaks, speakWithSpitch } from "@/services/spitch.service";
 
 export type SpeechVoice = "female" | "male";
 
@@ -81,6 +81,14 @@ async function post(ssml: string): Promise<{ status: number; audio?: Buffer }> {
   return { status: res.status, audio: audio.length ? audio : undefined };
 }
 
+export type Spoken = {
+  audio: Buffer;
+  /** Who actually made the audio. */
+  engine: "spitch" | "azure";
+  /** True when the native voice was wanted and could not be used (out of credit, busy, down): not the customer's fault. */
+  fellBack: boolean;
+};
+
 /** MP3 audio for a sentence. Throws SpeechUnsupported for a language with no voice, SpeechUnavailable on failure. */
 export async function synthesize(
   text: string,
@@ -88,27 +96,44 @@ export async function synthesize(
   voice: SpeechVoice = "female",
   rate = 1,
 ): Promise<Buffer> {
+  return (await synthesizeDetailed(text, language, voice, rate)).audio;
+}
+
+/**
+ * Like synthesize, and says which engine spoke. `native: false` asks for the standard (Azure) voice on purpose,
+ * for sessions whose host did not pay for the local voice; that is not a fallback.
+ */
+export async function synthesizeDetailed(
+  text: string,
+  language: string,
+  voice: SpeechVoice = "female",
+  rate = 1,
+  opts: { native?: boolean } = {},
+): Promise<Spoken> {
   if (!VOICES[language]) throw new SpeechUnsupported(language);
   if (!speechConfigured()) throw new SpeechUnavailable("not configured");
   const spoken = clean(text);
   if (!spoken) throw new SpeechUnavailable("empty");
 
-  const cacheKey = `${language}|${voice}|${rate}|${spoken}`;
+  const wantNative = opts.native !== false && spitchSpeaks(language);
+  const cacheKey = `${wantNative ? "n" : "s"}|${language}|${voice}|${rate}|${spoken}`;
   const hit = cache.get(cacheKey);
-  if (hit) return hit;
+  if (hit) return { audio: hit, engine: wantNative ? "spitch" : "azure", fellBack: false };
 
   // Hausa, Yoruba and Igbo: native Spitch voices first. They are the best, so they are the ones worth keeping.
-  if (spitchSpeaks(language) && spitchAvailable()) {
-    const native = await speakWithSpitch(spoken, language, voice, rate);
-    if (native) {
-      remember(cacheKey, native);
-      return native;
+  if (wantNative && (spitchAvailable() || spitchConfigured())) {
+    if (spitchAvailable()) {
+      const native = await speakWithSpitch(spoken, language, voice, rate);
+      if (native) {
+        remember(cacheKey, native);
+        return { audio: native, engine: "spitch", fellBack: false };
+      }
     }
     // Spitch could not answer (out of credit, busy, down): fall through to the Azure voice. That audio is not
     // kept, so the sentence is spoken natively as soon as Spitch is back.
-    return azureSynthesize(spoken, language, voice, rate, false);
+    return { audio: await azureSynthesize(spoken, language, voice, rate, false), engine: "azure", fellBack: true };
   }
-  return azureSynthesize(spoken, language, voice, rate, true, cacheKey);
+  return { audio: await azureSynthesize(spoken, language, voice, rate, true, cacheKey), engine: "azure", fellBack: false };
 }
 
 /** The Azure voice: phonetic markup for Hausa, Yoruba and Igbo, plain text otherwise. */

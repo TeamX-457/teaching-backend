@@ -20,6 +20,7 @@ async function liveRoutes(app: FastifyInstance) {
   );
   app.post("/glossary", { preHandler: educator }, liveController.upsertGlossary);
   app.get("/stats", { preHandler: educator }, liveController.stats);
+  app.get("/sessions/:code/usage", { preHandler: educator }, liveController.usage);
   app.post("/sessions/:code/invites", { preHandler: educator }, liveController.inviteToSession);
   app.get("/sessions/:code/invites", { preHandler: educator }, liveController.listInvites);
   app.delete("/sessions/:code/invites/:inviteId", { preHandler: educator }, liveController.removeInvite);

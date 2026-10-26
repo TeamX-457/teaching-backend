@@ -16,6 +16,15 @@ export const Route = createFileRoute("/terms")({
         </ul>
         <h2>Your account</h2>
         <p>Keep your password private. You are responsible for what is done with your account.</p>
+        <h2>Payments, time and refunds</h2>
+        <ul>
+          <li>Speakers pay for time, either as a monthly plan or as a number of hours. Listening in text, and with your own device's voice, is free.</li>
+          <li>Time you buy is valid for 30 days from the day you pay. Time not used by then expires, and the money for it is not refundable. Please buy only what you expect to use.</li>
+          <li>Only time a session is live and in use is counted. If the local voice is unavailable and the standard voice takes over, that period is not counted against your time.</li>
+          <li>A listener pass lasts 30 days from payment and is not refundable. The local voice needs both a listener pass and a speaker who has turned the local voice on.</li>
+          <li>When your time runs out, a session continues for a short grace period, then paid features stop until you add time.</li>
+          <li>Payments are processed by Paystack. If a payment is taken twice by mistake, or we fail to give you the time you paid for, contact us and we will put it right.</li>
+        </ul>
         <h2>Content</h2>
         <p>You keep ownership of the words you speak and the sessions you create. We process them only to provide the service.</p>
         <h2>Changes</h2>

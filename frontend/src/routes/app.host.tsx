@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Mic, Pause, Play, Square, UserPlus, X } from "lucide-react";
+import { Clock, Mic, Pause, Play, Square, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LiveStage } from "@/components/vv/LiveStage";
 import { CopyButton, LangSelect, ProblemBanner } from "@/components/vv/fields";
 import { EmptyState, PageHeader } from "@/components/vv/primitives";
-import { api, ApiError, VENUES, venueLabel, type Invite, type LiveSession, type VenueType } from "@/lib/api";
+import { api, ApiError, VENUES, venueLabel, type Balance, type Estimate, type Invite, type LiveSession, type SessionUsage, type Tier, type VenueType } from "@/lib/api";
 import { useAuth, useLanguages } from "@/lib/auth";
 import { speechSupported, useRecognizer, type Problem, type Stage } from "@/lib/listening";
 import { useStore } from "@/lib/store";
@@ -38,11 +38,36 @@ function Create({ langs, onCreated }: { langs: { code: string; name: string; spe
   const [lang, setLang] = useState("en");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string>();
+  const [tier, setTier] = useState<Tier>("captions");
+  const [voices, setVoices] = useState(1);
+  const [minutes, setMinutes] = useState(60);
+  const [balance, setBalance] = useState<Balance>();
+  const [est, setEst] = useState<Estimate>();
+  const [short, setShort] = useState(false);
+
+  // Start at the best level the speaker has time for.
+  useEffect(() => {
+    api.billing.me().then((r) => {
+      setBalance(r.balance);
+      setTier(r.balance.local.seconds > 0 ? "local" : r.balance.standard.seconds > 0 ? "standard" : "captions");
+    }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    let live = true;
+    api.billing.estimate({ tier, minutes, voiceLanguages: tier === "captions" ? 1 : voices }).then((e) => { if (live) setEst(e); }).catch(() => {});
+    return () => { live = false; };
+  }, [tier, minutes, voices]);
+
   async function go(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setErr(undefined);
-    try { onCreated((await api.live.create({ title: title.trim(), venueType: venue, sourceLang: lang })).session); }
-    catch { setErr("We couldn't start the session. Please try again."); setBusy(false); }
+    setBusy(true); setErr(undefined); setShort(false);
+    try {
+      onCreated((await api.live.create({ title: title.trim(), venueType: venue, sourceLang: lang, tier, voiceLanguages: tier === "captions" ? 1 : voices, capMinutes: minutes })).session);
+    } catch (e2) {
+      if (e2 instanceof ApiError && e2.code === "NO_TIME") setShort(true);
+      else setErr("We couldn't start the session. Please try again.");
+      setBusy(false);
+    }
   }
   return (
     <>
@@ -62,6 +87,50 @@ function Create({ langs, onCreated }: { langs: { code: string; name: string; spe
           </div>
           <LangSelect label="Language you speak" value={lang} onChange={setLang} langs={langs as never} filter={(l) => l.speechRecognition.supported} />
         </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div>
+            <Label>What your audience gets</Label>
+            <Select value={tier} onValueChange={(v) => setTier(v as Tier)}>
+              <SelectTrigger className="mt-2 h-11" aria-label="What your audience gets"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="captions">Translated captions</SelectItem>
+                <SelectItem value="standard">Captions + standard voice</SelectItem>
+                <SelectItem value="local">Captions + local voice (Hausa, Yoruba, Igbo)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>How long will you speak?</Label>
+            <Select value={String(minutes)} onValueChange={(v) => setMinutes(Number(v))}>
+              <SelectTrigger className="mt-2 h-11" aria-label="Session length"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[30, 60, 90, 120, 180, 240, 300, 480, 600].map((m) => <SelectItem key={m} value={String(m)}>{m < 60 ? `${m} minutes` : `${m / 60} ${m === 60 ? "hour" : "hours"}`}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {tier !== "captions" && (
+          <div>
+            <Label>Languages spoken aloud at once</Label>
+            <Select value={String(voices)} onValueChange={(v) => setVoices(Number(v))}>
+              <SelectTrigger className="mt-2 h-11 sm:w-48" aria-label="Voice languages"><SelectValue /></SelectTrigger>
+              <SelectContent>{[1, 2, 3].map((n) => <SelectItem key={n} value={String(n)}>{n}</SelectItem>)}</SelectContent>
+            </Select>
+            <p className="mt-1.5 text-xs text-muted-foreground">Each extra language that speaks aloud uses your time at the same speed.</p>
+          </div>
+        )}
+        {est && (
+          <div className={`rounded-xl px-4 py-3 text-sm ${est.enough ? "bg-secondary" : "border border-destructive/40 bg-destructive/5"}`} aria-live="polite">
+            <p className="flex items-center gap-2 font-medium"><Clock className="h-4 w-4" /> This session can use up to {est.usesHours} {est.usesHours === 1 ? "hour" : "hours"} of your time</p>
+            <p className="mt-1 text-muted-foreground">
+              {est.enough
+                ? `You have ${est.haveHours} h, so about ${est.leftAfterHours} h would be left. The session stops at the length you chose.`
+                : `You have ${est.haveHours} h. You need about ${est.buyHours} more.`}
+            </p>
+            {!est.enough && balance && <Link to="/app/billing" className="mt-2 inline-block font-medium text-primary underline underline-offset-4">Add time</Link>}
+          </div>
+        )}
+        {short && <p role="alert" className="text-sm text-destructive">You need more time to start this session. <Link to="/app/billing" className="font-medium underline underline-offset-4">Add time</Link></p>}
         {err && <p role="alert" className="text-sm text-destructive">{err}</p>}
         <Button size="lg" className="w-full" disabled={!title.trim() || busy}>{busy ? "Starting…" : "Create session"}</Button>
       </form>
@@ -77,9 +146,17 @@ function Broadcast({ session, langs, onEnded }: { session: LiveSession; langs: {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [sendError, setSendError] = useState(false);
   const [ended, setEnded] = useState(false);
+  const [usage, setUsage] = useState<SessionUsage | null>(null);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const cfg = langs.find((l) => l.code === session.sourceLang);
   const link = typeof window === "undefined" ? "" : `${window.location.origin}/live/${session.code}`;
+
+  const refreshUsage = useCallback(() => { api.live.usage(session.code).then(setUsage).catch(() => {}); }, [session.code]);
+  useEffect(() => {
+    refreshUsage();
+    const id = setInterval(refreshUsage, 20_000);
+    return () => clearInterval(id);
+  }, [refreshUsage]);
 
   const send = useCallback((text: string) => {
     chain.current = chain.current.then(() =>
@@ -111,6 +188,8 @@ function Broadcast({ session, langs, onEnded }: { session: LiveSession; langs: {
         </div>
       </div>
 
+      {usage && <TimeMeter usage={usage} />}
+
       <InvitePanel code={session.code} />
 
       <div className="mt-6"><LiveStage stage={stage} title="Your broadcast" fromName={cfg?.name ?? session.sourceLang} toName="" original={last} translated="" live={on && !ended} showTranslation={false} translationPending={false} subtitleSize={size} /></div>
@@ -132,6 +211,29 @@ function Broadcast({ session, langs, onEnded }: { session: LiveSession; langs: {
       {!speechSupported() && <p className="mt-3 text-sm text-muted-foreground">Speaking needs Chrome or Edge.</p>}
       {ended && <Button className="mt-4" onClick={onEnded}>Start another session</Button>}
     </>
+  );
+}
+
+const mins = (s: number) => `${Math.max(0, Math.floor(s / 60))} min`;
+
+/** Time used and time left in plain words. Never shows a rate. */
+function TimeMeter({ usage }: { usage: SessionUsage }) {
+  const left = [usage.secondsLeft, usage.secondsUntilCap].filter((n): n is number => n !== null);
+  const remaining = left.length ? Math.min(...left) : null;
+  const low = remaining !== null && remaining < 10 * 60;
+  return (
+    <section className="rise d-2 mt-6 rounded-2xl border bg-card p-5" aria-labelledby="meter-title" aria-live="polite">
+      <h2 id="meter-title" className="flex items-center gap-2 text-sm font-medium"><Clock className="h-4 w-4 text-primary" /> Session time</h2>
+      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div><p className="text-xs text-muted-foreground">Running</p><p className="text-xl font-semibold tabular-nums">{mins(usage.sessionSeconds)}</p></div>
+        <div><p className="text-xs text-muted-foreground">Time left</p><p className={`text-xl font-semibold tabular-nums ${low ? "text-destructive" : ""}`}>{remaining === null ? "—" : mins(remaining)}</p></div>
+        <div><p className="text-xs text-muted-foreground">Session ends at</p><p className="text-xl font-semibold tabular-nums">{usage.capSeconds ? mins(usage.capSeconds) : "when you end it"}</p></div>
+      </div>
+      {usage.backupVoice && <p className="mt-3 rounded-lg bg-secondary px-3 py-2 text-xs">The local voice is on its backup for a moment. Your time is not being used while that lasts.</p>}
+      {low && !usage.stopped && <p className="mt-3 text-sm text-destructive">Your time is almost used. <Link to="/app/billing" className="font-medium underline underline-offset-4">Add time</Link> so the session is not interrupted.</p>}
+      {usage.stopped === "out_of_time" && <p role="alert" className="mt-3 text-sm text-destructive">Your time has run out, so translation and voice have stopped. <Link to="/app/billing" className="font-medium underline underline-offset-4">Add time</Link> and they resume straight away.</p>}
+      {usage.stopped === "cap_reached" && <p role="alert" className="mt-3 text-sm text-destructive">This session reached the length you chose, so translation and voice have stopped. End it and start another to carry on.</p>}
+    </section>
   );
 }
 

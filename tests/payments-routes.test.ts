@@ -38,10 +38,13 @@ describe("payment routes", () => {
       payload: body,
     });
 
-  it("lists nothing for sale until a plan is switched on", async () => {
+  it("lists the plans and the listener pass, but not the developer API (not for sale yet)", async () => {
     const res = await app.inject({ method: "GET", url: "/api/payments/plans" });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ configured: true, plans: [] });
+    const ids = (res.json().plans as { id: string }[]).map((p) => p.id);
+    expect(ids).toContain("sermon-local");
+    expect(ids).toContain("listener-pass");
+    expect(ids).not.toContain("api-starter");
   });
 
   it("says payments are not configured without a key", async () => {
