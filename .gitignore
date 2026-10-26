@@ -11,3 +11,10 @@ audio-samples/
 frontend/public/downloads/*.apk
 frontend/.output/
 *.docx
+
+# Internal cost and pricing notes stay local
+docs/BILLING.md
+docs/pricing*.md
+
+# APKs downloaded from GitHub Actions
+apk-output/
