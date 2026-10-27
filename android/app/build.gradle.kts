@@ -17,11 +17,26 @@ android {
         versionName = "1.1.0"
     }
 
+    // One fixed key for every build, so a new APK installs over the old one. In CI the key comes from GitHub
+    // secrets (KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD); the key file is never in the repo.
+    // Without those variables the normal per-machine debug key is used.
+    val ciKey = System.getenv("KEYSTORE_PATH")?.takeIf { it.isNotBlank() }
+    if (ciKey != null) {
+        signingConfigs.create("fixed") {
+            storeFile = file(ciKey)
+            storePassword = System.getenv("KEYSTORE_PASSWORD")
+            keyAlias = System.getenv("KEY_ALIAS")
+            keyPassword = System.getenv("KEY_PASSWORD")
+        }
+    }
     buildTypes {
+        debug {
+            signingConfigs.findByName("fixed")?.let { signingConfig = it }
+        }
         release {
             isMinifyEnabled = false
-            // Signed with the debug key so the APK installs directly (sideload build).
-            signingConfig = signingConfigs.getByName("debug")
+            // The fixed key when present, otherwise the debug key so the APK still installs (sideload build).
+            signingConfig = signingConfigs.findByName("fixed") ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {

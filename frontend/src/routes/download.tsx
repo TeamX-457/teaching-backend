@@ -12,7 +12,7 @@ export const Route = createFileRoute("/download")({
 const APK_PATH = "/downloads/voiceverse.apk";
 
 const STEPS: [string, string][] = [
-  ["Download the app", "Tap the button on your Android phone. The file is about 11 MB."],
+  ["Download the app", "Tap the button on your Android phone. The file is about 16 MB."],
   ["Allow the install", "Open the downloaded file. If Android asks, allow your browser to install apps. You can switch that off again afterwards."],
   ["Open Voice Verse", "Sign in or create an account, enter a session code, and the words appear the moment someone speaks."],
 ];
@@ -100,7 +100,7 @@ function DownloadPage() {
               {copied ? <><Check className="mr-2 h-4 w-4" /> Link copied</> : <><Copy className="mr-2 h-4 w-4" /> Copy link</>}
             </Button>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">Version 1.1.0 · Android 8.0 or newer · 11 MB</p>
+          <p className="mt-3 text-xs text-muted-foreground">Version 1.1.0 · Android 8.0 or newer · 16 MB</p>
           <p className="mt-4 break-all rounded-lg bg-muted px-3 py-2 font-mono text-xs text-muted-foreground" data-testid="apk-url">{href}</p>
         </section>
 
