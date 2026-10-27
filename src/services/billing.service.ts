@@ -119,8 +119,9 @@ export async function grantForPayment(
 
 /** Every speaker gets some free captions time each month. Created the first time it is needed. */
 async function ensureFree(userId: string, now: Date, store: BillingStore) {
+  // The reference includes the user: references are unique across the whole ledger.
   await store.addGrant({
-    userId, reference: `FREE-${monthKey(now)}`, tier: "captions", secondsTotal: FREE_MONTHLY_SECONDS, expiresAt: endOfMonth(now),
+    userId, reference: `FREE-${monthKey(now)}-${userId}`, tier: "captions", secondsTotal: FREE_MONTHLY_SECONDS, expiresAt: endOfMonth(now),
   });
 }
 

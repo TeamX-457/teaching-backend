@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DraftNotice, PublicPage, Prose } from "@/components/vv/PublicPage";
+import { PublicPage, Prose } from "@/components/vv/PublicPage";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({ meta: [{ title: "Terms — Voice Verse" }] }),
   component: () => (
     <PublicPage eyebrow="Terms" title="Using Voice Verse." lead="Short, plain terms for a product that is still in pilot.">
-      <DraftNotice />
       <Prose>
         <h2>A prototype in pilot</h2>
         <p>Voice Verse is an early product. It may be unavailable at times, and its subtitles and translations may contain mistakes. Do not rely on it for medical, legal or safety-critical communication.</p>

@@ -172,6 +172,15 @@ describe("balance", () => {
     expect(await secondsAvailable("u1", "captions", next, store)).toBe(30 * 60); // a new month, a new allowance
   });
 
+  it("gives EVERY speaker their free time, not just the first one to ask", async () => {
+    const store = memoryBilling();
+    for (const id of ["u1", "u2", "u3", "u4"]) expect(await secondsAvailable(id, "captions", T0, store)).toBe(30 * 60);
+    // the ledger holds one row per speaker per month, each with its own reference
+    const refs = store.grants.map((g) => g.reference);
+    expect(new Set(refs).size).toBe(4);
+    for (const r of refs) expect(r).toMatch(/^FREE-202610-u[1-4]$/);
+  });
+
   it("lets higher levels cover lower ones, but not the other way round", async () => {
     const store = memoryBilling();
     await grantForPayment({ reference: "A", userId: "u1", planId: "hours-local-2", paidAt: T0 }, store);

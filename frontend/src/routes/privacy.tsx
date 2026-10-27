@@ -1,11 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { DraftNotice, PublicPage, Prose } from "@/components/vv/PublicPage";
+import { PublicPage, Prose } from "@/components/vv/PublicPage";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({ meta: [{ title: "Privacy — Voice Verse" }] }),
   component: () => (
     <PublicPage eyebrow="Privacy" title="What we keep, and what we don't." lead="Spoken conversations can be sensitive. This is how Voice Verse handles them.">
-      <DraftNotice />
       <Prose>
         <h2>Payments</h2>
         <p>Payments are made on Paystack's own page. We receive your name, email, the amount and whether it succeeded, and keep that record to give you your time and for our accounts. We never see or store your card details.</p>

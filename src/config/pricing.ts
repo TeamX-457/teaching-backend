@@ -22,7 +22,7 @@ export const tierRank = (t: Tier) => TIERS.indexOf(t);
 export const BUNDLE_DAYS = 30;
 
 /** Naira per hour when buying hours directly. Standard is about 65% of local, so local is the easy choice. */
-export const HOURLY_NAIRA: Record<Tier, number> = { captions: 4_000, standard: 10_000, local: 15_000 };
+export const HOURLY_NAIRA: Record<Tier, number> = { captions: 3_000, standard: 8_000, local: 12_000 };
 export const MIN_HOURS = 1;
 export const MAX_HOURS = 40;
 /** Ten hours or more at once is 10% off. */
@@ -73,18 +73,18 @@ const bundle = (event: EventKind, tier: Tier, name: string, hours: number, amoun
 
 /** Monthly plans. The "classroom" voice plans include fewer hours of voice than of captions: see `voiceHours`. */
 export const BUNDLES: Bundle[] = [
-  bundle("sermon", "captions", "Sermon", 8, 25_000, "Up to 2 hours per sermon."),
-  bundle("sermon", "standard", "Sermon", 8, 65_000, "Up to 2 hours per sermon."),
-  bundle("sermon", "local", "Sermon", 8, 100_000, "Up to 2 hours per sermon."),
-  bundle("service", "captions", "Church service", 20, 60_000, "Up to 5 hours per service."),
-  bundle("service", "standard", "Church service", 20, 156_000, "Up to 5 hours per service."),
-  bundle("service", "local", "Church service", 20, 240_000, "Up to 5 hours per service."),
-  bundle("conference", "captions", "Conference", 10, 35_000, "Up to 10 hours per event."),
-  bundle("conference", "standard", "Conference", 10, 98_000, "Up to 10 hours per event."),
-  bundle("conference", "local", "Conference", 10, 150_000, "Up to 10 hours per event."),
+  bundle("sermon", "captions", "Sermon", 8, 20_000, "Up to 2 hours per sermon."),
+  bundle("sermon", "standard", "Sermon", 8, 52_000, "Up to 2 hours per sermon."),
+  bundle("sermon", "local", "Sermon", 8, 78_000, "Up to 2 hours per sermon."),
+  bundle("service", "captions", "Church service", 20, 48_000, "Up to 5 hours per service."),
+  bundle("service", "standard", "Church service", 20, 125_000, "Up to 5 hours per service."),
+  bundle("service", "local", "Church service", 20, 190_000, "Up to 5 hours per service."),
+  bundle("conference", "captions", "Conference", 10, 24_000, "Up to 10 hours per event."),
+  bundle("conference", "standard", "Conference", 10, 64_000, "Up to 10 hours per event."),
+  bundle("conference", "local", "Conference", 10, 98_000, "Up to 10 hours per event."),
   bundle("classroom", "captions", "Classroom", 8, 15_000, "For lessons of any length."),
-  bundle("classroom", "standard", "Classroom", 8, 40_000, "8 hours: 4 with voice, the rest captions only."),
-  bundle("classroom", "local", "Classroom", 8, 60_000, "8 hours: 4 with local voice, the rest captions only."),
+  bundle("classroom", "standard", "Classroom", 8, 32_000, "8 hours: 4 with voice, the rest captions only."),
+  bundle("classroom", "local", "Classroom", 8, 48_000, "8 hours: 4 with local voice, the rest captions only."),
 ];
 
 /** What a bundle puts in the ledger: [tier, hours]. Classroom voice plans split the hours between two levels. */
