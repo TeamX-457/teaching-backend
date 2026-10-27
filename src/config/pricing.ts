@@ -156,8 +156,45 @@ export function resolvePlan(id: string): Plan | undefined {
       enabled: true,
     };
   }
+  const credit = API_CREDIT_PARSE.exec(id);
+  if (credit) {
+    const naira = Number(credit[1]);
+    if (!API_CREDIT_PACKS.includes(naira)) return undefined;
+    return { id, name: `API credit ₦${naira.toLocaleString("en-NG")}`, purpose: "APICREDIT", description: `Voice Verse API credit ${naira}`, amountNaira: naira, enabled: true };
+  }
   return PLANS.find((p) => p.id === id);
 }
+
+// ---- developer API --------------------------------------------------------------------------------------
+/**
+ * What developers are billed, in naira. These are the prices they see on their usage page; our own costs and
+ * margins are never shown. Used only when API_BILLING_ENFORCED=1 deducts from credit; before that the usage page
+ * shows what use would cost.
+ */
+export const API_RATES = {
+  /** per 100 words translated */
+  translatePer100Words: 35,
+  /** per minute of generated speech */
+  speechStandardPerMinute: 45,
+  speechLocalPerMinute: 250,
+  /** per minute of audio transcribed */
+  transcribePerMinute: 80,
+};
+export type ApiKind = "translation" | "speech" | "transcription";
+export type ApiVoiceClass = "text" | "standard" | "local";
+
+/** The billed price, in kobo, of `units` (words for translation, seconds of audio otherwise). Always rounds up. */
+export function apiPriceKobo(kind: ApiKind, cls: ApiVoiceClass, units: number): number {
+  if (!Number.isFinite(units) || units <= 0) return 0;
+  const n = Math.ceil(units);
+  if (kind === "translation") return Math.ceil((n * API_RATES.translatePer100Words * 100) / 100);
+  const perMinute = kind === "transcription" ? API_RATES.transcribePerMinute : cls === "local" ? API_RATES.speechLocalPerMinute : API_RATES.speechStandardPerMinute;
+  return Math.ceil((n * perMinute * 100) / 60);
+}
+
+/** Prepaid credit packs for developers. The id carries the amount, and only these amounts are for sale. */
+export const API_CREDIT_PACKS = [5_000, 20_000, 100_000];
+export const API_CREDIT_PARSE = /^api-credit-(\d{4,6})$/;
 
 /** Developer API plans. Not for sale yet. */
 export const PLANS: Plan[] = [
@@ -173,6 +210,6 @@ export const PLANS: Plan[] = [
 
 /** Plans a customer can actually buy right now. */
 export const sellable = (plans?: Plan[]) => {
-  const all = plans ?? [...PLANS, ...BUNDLES.map((b) => resolvePlan(b.id)!), resolvePlan("listener-pass")!];
+  const all = plans ?? [...PLANS, ...BUNDLES.map((b) => resolvePlan(b.id)!), resolvePlan("listener-pass")!, ...API_CREDIT_PACKS.map((n) => resolvePlan(`api-credit-${n}`)!)];
   return all.filter((p) => p.enabled && typeof p.amountNaira === "number" && p.amountNaira > 0);
 };

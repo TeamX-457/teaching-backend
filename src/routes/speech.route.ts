@@ -46,7 +46,7 @@ const allow = createRateLimiter(40, 60_000);
  * Shared by POST /api/speech (public) and POST /v1/speech (API key).
  * `v1` only changes the shape of error bodies.
  */
-export function speechHandler(v1: boolean) {
+export function speechHandler(v1: boolean, billed?: (req: FastifyRequest, spoken: { seconds: number; local: boolean }) => Promise<void>) {
   const fail = (res: FastifyReply, status: number, code: string, message: string) =>
     res.code(status).send(v1 ? apiError(message, status === 429 ? "rate_limit_error" : "invalid_request_error", code) : { error: message, code });
 
@@ -90,6 +90,7 @@ export function speechHandler(v1: boolean) {
         }
       }
       const spoken = await synthesizeDetailed(text, language, voice, rate, { native });
+      if (v1 && billed) await billed(req, { seconds: audioSeconds(text), local: spoken.engine === "spitch" });
       res.header("X-Voice", spoken.engine === "spitch" ? "local" : "standard").header("X-Voice-Reason", reason);
       if (sessionRow && spoken.fellBack) {
         // Our side failed: the host is not charged while the backup voice is speaking.

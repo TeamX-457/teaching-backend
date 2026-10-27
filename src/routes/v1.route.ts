@@ -8,6 +8,8 @@ import { speechHandler } from "@/routes/speech.route";
 import { speechConfigured, speechLanguages } from "@/services/speech.service";
 import { spitchAvailable, spitchConfigured, spitchSupports, transcribeWithSpitch } from "@/services/spitch.service";
 import { liveService } from "@/services/live.service";
+import { audioSeconds } from "@/services/billing.service";
+import { precheck, recordUsage } from "@/services/apibilling.service";
 import { translate, translationProviderConfigured } from "@/services/translation.service";
 
 const lang = z.string().trim().toLowerCase().min(2).max(8);
@@ -30,6 +32,15 @@ const baseUrlOf = (req: FastifyRequest) => {
   const proto = String(req.headers["x-forwarded-proto"] ?? (local ? "http" : "https")).split(",")[0];
   return `${proto}://${host}`;
 };
+
+/** Refuses a billable call when the key hit its monthly limit or (once charging is on) the account has no credit. */
+async function guard(req: FastifyRequest, res: import("fastify").FastifyReply) {
+  const key = req.apiKey!;
+  const why = await precheck(key);
+  if (!why) return false;
+  await res.code(why.status).send(apiError(why.message, "billing_error", why.code));
+  return true;
+}
 
 /** Runs `fn` over `items` with at most `limit` in flight, keeping order. */
 async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T, i: number) => Promise<R>): Promise<R[]> {
@@ -83,6 +94,7 @@ async function v1Routes(app: FastifyInstance) {
   // up to 8 MB) with ?language=en|yo|ha|ig. Answers { text }.
   app.addContentTypeParser(/^audio\/.*$/, { parseAs: "buffer", bodyLimit: 8 * 1024 * 1024 }, (_req, body, done) => done(null, body));
   app.post("/transcribe", { preHandler: requireApiKey }, async (req, res) => {
+    if (await guard(req, res)) return;
     const language = String((req.query as { language?: string }).language ?? "en").trim().toLowerCase();
     if (!spitchSupports(language)) {
       return res.code(422).send(apiError(`Speech recognition is available for en, yo, ha and ig (got "${language}").`, "invalid_request_error", "unsupported_language"));
@@ -95,13 +107,19 @@ async function v1Routes(app: FastifyInstance) {
     if (heard === null) {
       return res.code(503).send(apiError("Speech recognition is unavailable right now. Please try again.", "api_error", "unavailable"));
     }
+    // The audio length is estimated from its size (about 16 KB a second), as the file itself is not decoded here.
+    await recordUsage({ userId: req.apiKey!.userId, keyId: req.apiKey!.id, kind: "transcription", voiceClass: "text", units: Math.max(1, Math.ceil(audio.length / 16_000)) });
     return { object: "transcription", language, text: heard };
   });
 
   // Spoken audio (MP3). Hausa, Yoruba and Igbo are pronounced from phonetic markup on a Nigerian voice.
-  app.post("/speech", { preHandler: requireApiKey }, speechHandler(true));
+  const speechBilled = async (req: FastifyRequest, s: { seconds: number; local: boolean }) => {
+    await recordUsage({ userId: req.apiKey!.userId, keyId: req.apiKey!.id, kind: "speech", voiceClass: s.local ? "local" : "standard", units: s.seconds });
+  };
+  app.post("/speech", { preHandler: [requireApiKey, async (req, res) => { await guard(req, res); }] }, speechHandler(true, speechBilled));
 
   app.post("/translate", { preHandler: requireApiKey }, async (req, res) => {
+    if (await guard(req, res)) return;
     const parsed = bodySchema.safeParse(req.body);
     if (!parsed.success) {
       const first = parsed.error.issues[0];
@@ -133,6 +151,9 @@ async function v1Routes(app: FastifyInstance) {
     });
 
     const first = translations[0]!;
+    // Only text that was really translated is billed, counted in words.
+    const words = inputs.reduce((n, s, i) => n + (translations[i]!.translated ? s.trim().split(/\s+/).filter(Boolean).length : 0), 0);
+    await recordUsage({ userId: req.apiKey!.userId, keyId: req.apiKey!.id, kind: "translation", voiceClass: "text", units: words });
     return {
       id: `tr_${randomBytes(9).toString("hex")}`,
       object: "translation",

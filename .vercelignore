@@ -7,3 +7,6 @@ node_modules
 *.docx
 /gen-images.mjs
 /audio-samples
+/apk-output
+/apk-new
+/.github

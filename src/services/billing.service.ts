@@ -14,6 +14,7 @@ import {
   type Tier,
 } from "@/config/pricing";
 import { creditGrants, listenerPasses, listenerTrials } from "@/models/schema";
+import { creditPackKobo, topUp } from "@/services/apibilling.service";
 
 export type Grant = { id: string; userId: string; reference: string; tier: Tier; secondsTotal: number; secondsUsed: number; expiresAt: Date };
 const left = (g: Grant) => Math.max(0, g.secondsTotal - g.secondsUsed);
@@ -86,8 +87,11 @@ const endOfMonth = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMo
 export async function grantForPayment(
   payment: { reference: string; userId: string | null; planId: string; paidAt?: Date | null },
   store: BillingStore = dbBilling,
+  credit: (reference: string, userId: string, kobo: number) => Promise<boolean> = topUp,
 ): Promise<boolean> {
   if (!payment.userId) return false;
+  const pack = creditPackKobo(payment.planId);
+  if (pack > 0) return credit(payment.reference, payment.userId, pack);
   const paid = payment.paidAt ?? new Date();
   const hours = PARSE_HOURS.exec(payment.planId);
   if (hours) {

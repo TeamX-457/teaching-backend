@@ -72,6 +72,16 @@ export type Pricing = {
   listener: { id: string; amount: number; days: number; trialMinutes: number; about: string };
   rules: { validDays: number; refundable: boolean; graceMinutes: number; extraVoiceLanguages: string };
 };
+export type ApiUsage = {
+  days: number;
+  billing: "on" | "preview";
+  creditKobo: number;
+  rates: { translatePer100Words: number; speechStandardPerMinute: number; speechLocalPerMinute: number; transcribePerMinute: number };
+  totals: { calls: number; words: number; audioSeconds: number; amountKobo: number };
+  byKey: { keyId: string | null; name: string; prefix: string; capKobo: number | null; calls: number; amountKobo: number; monthKobo: number }[];
+  byKind: { kind: string; voiceClass: string; calls: number; units: number; amountKobo: number }[];
+  daily: { day: string; calls: number; amountKobo: number }[];
+};
 export type Estimate = { usesHours: number; haveHours: number; leftAfterHours: number; enough: boolean; buyHours: number; buyPrice: number; buyPlan: string | null };
 export type LiveCaption = {
   id: string;
@@ -117,6 +127,10 @@ export const api = {
     list: () => request<{ keys: ApiKeyInfo[] }>("/api/keys"),
     create: (name: string) => request<{ key: ApiKeyInfo; secret: string }>("/api/keys", { method: "POST", body: { name } }),
     revoke: (id: string) => request<{ ok: boolean }>(`/api/keys/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    usage: (days = 30) => request<ApiUsage>(`/api/keys/usage?days=${days}`),
+    /** A monthly spending limit for one key, in naira; null removes it. */
+    setCap: (id: string, capNaira: number | null) =>
+      request<{ ok: boolean }>(`/api/keys/${encodeURIComponent(id)}/cap`, { method: "PUT", body: { capNaira } }),
   },
 
   contact: (b: { name: string; email: string; topic: string; message: string; website?: string | undefined }) =>

@@ -272,6 +272,8 @@ export const apiKeys = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     lastUsedAt: timestamp("last_used_at"),
     revokedAt: timestamp("revoked_at"),
+    // Optional monthly spending limit for this key, in kobo. The key stops (HTTP 402) when it is reached.
+    monthlyCapKobo: integer("monthly_cap_kobo"),
   },
   (table) => [uniqueIndex("api_keys_hash_idx").on(table.keyHash), index("api_keys_user_idx").on(table.userId)],
 );
@@ -350,6 +352,45 @@ export const listenerTrials = pgTable("listener_trials", {
   secondsUsed: integer("seconds_used").default(0).notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// What developers are charged, one row per API call. `amountKobo` is the billed price (never our cost).
+export const apiUsage = pgTable(
+  "api_usage",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+    keyId: uuid("key_id").references(() => apiKeys.id, { onDelete: "set null" }),
+    // translation | speech | transcription
+    kind: text("kind").notNull(),
+    // text | standard | local
+    voiceClass: text("voice_class").notNull(),
+    // words for translation, seconds of audio for speech and transcription
+    units: integer("units").notNull(),
+    amountKobo: integer("amount_kobo").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("api_usage_user_idx").on(table.userId, table.createdAt), index("api_usage_key_idx").on(table.keyId, table.createdAt)],
+);
+
+// A developer's prepaid credit, in kobo.
+export const apiAccounts = pgTable("api_accounts", {
+  userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).primaryKey(),
+  creditKobo: integer("credit_kobo").default(0).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// One row per credit purchase. The unique reference means a payment tops up exactly once.
+export const apiCreditTopups = pgTable(
+  "api_credit_topups",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    reference: text("reference").notNull(),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }).notNull(),
+    amountKobo: integer("amount_kobo").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("api_credit_topups_ref_idx").on(table.reference)],
+);
 
 export const contactMessages = pgTable("contact_messages", {
   id: uuid("id").defaultRandom().primaryKey(),

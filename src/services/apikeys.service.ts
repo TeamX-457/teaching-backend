@@ -17,7 +17,7 @@ export function generateKey() {
 /** Cheap shape check so junk never reaches the database. */
 export const looksLikeKey = (s: string) => /^vv_[A-Za-z0-9_-]{43}$/.test(s);
 
-export type VerifiedKey = { id: string; userId: string };
+export type VerifiedKey = { id: string; userId: string; capKobo: number | null };
 
 // Verified keys are remembered briefly so a busy client does not cost a query per call.
 const CACHE_MS = 30_000;
@@ -38,6 +38,11 @@ export const apiKeysService = {
       .values({ userId, name, prefix, keyHash: hash })
       .returning({ id: apiKeys.id, name: apiKeys.name, prefix: apiKeys.prefix, createdAt: apiKeys.createdAt });
     return { key: row!, secret };
+  },
+
+  /** Drops cached copies of a key (after its limit changes) so the change applies at once on this instance. */
+  forget(keyId: string) {
+    for (const [hash, v] of cache) if (v.key?.id === keyId) cache.delete(hash);
   },
 
   list(userId: string) {
@@ -73,7 +78,7 @@ export const apiKeysService = {
     if (hit && hit.until > now) return hit.key;
 
     const [row] = await db
-      .select({ id: apiKeys.id, userId: apiKeys.userId })
+      .select({ id: apiKeys.id, userId: apiKeys.userId, capKobo: apiKeys.monthlyCapKobo })
       .from(apiKeys)
       .where(and(eq(apiKeys.keyHash, hash), isNull(apiKeys.revokedAt)))
       .limit(1);

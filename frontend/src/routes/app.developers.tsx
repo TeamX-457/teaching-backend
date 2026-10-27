@@ -5,6 +5,7 @@ import { BookOpen, Check, Copy, KeyRound, ShieldAlert, Trash2 } from "lucide-rea
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ApiUsagePanel } from "@/components/vv/ApiUsagePanel";
 import { PageHeader } from "@/components/vv/primitives";
 import { api, ApiError } from "@/lib/api";
 
@@ -141,6 +142,8 @@ function Developers() {
             )}
           </div>
         </section>
+
+        <ApiUsagePanel />
 
         <section className="rise d-2 rounded-2xl border bg-card p-6">
           <h2 className="text-lg font-medium">Use it with Claude</h2>
