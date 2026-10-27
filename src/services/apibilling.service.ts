@@ -45,7 +45,7 @@ export async function precheck(key: { id: string; userId: string; capKobo?: numb
  */
 export async function recordUsage(input: { userId: string; keyId: string; kind: ApiKind; voiceClass: ApiVoiceClass; units: number }): Promise<number> {
   const amountKobo = apiPriceKobo(input.kind, input.voiceClass, input.units);
-  try {
+  const write = (async () => {
     await db.insert(apiUsage).values({ ...input, units: Math.ceil(input.units), amountKobo });
     if (apiBillingEnforced() && amountKobo > 0) {
       await db
@@ -53,9 +53,9 @@ export async function recordUsage(input: { userId: string; keyId: string; kind: 
         .values({ userId: input.userId, creditKobo: -amountKobo })
         .onConflictDoUpdate({ target: apiAccounts.userId, set: { creditKobo: sql`${apiAccounts.creditKobo} - ${amountKobo}`, updatedAt: new Date() } });
     }
-  } catch {
-    /* recording is best effort */
-  }
+  })().catch(() => { /* recording is best effort */ });
+  // The write carries on in the background if the database is slow: it never holds up the answer for long.
+  await Promise.race([write, new Promise<void>((resolve) => setTimeout(resolve, 1_500))]);
   return amountKobo;
 }
 

@@ -109,6 +109,7 @@ function Landing() {
             <div className="mt-7 flex flex-wrap gap-3">
               <Button size="lg" asChild><a href="/signup">Create an account <ArrowRight /></a></Button>
               <Button size="lg" variant="outline" asChild><a href="/download"><Smartphone /> Get the Android app</a></Button>
+              <Button size="lg" variant="ghost" asChild><a href="/pricing">See pricing</a></Button>
             </div>
           </Reveal>
           <Reveal delay={120}><JoinForm /></Reveal>

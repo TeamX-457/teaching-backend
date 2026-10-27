@@ -11,6 +11,7 @@ export function SiteHeader() {
         <Logo />
         <nav className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
           <a href="/#how" className="transition-colors hover:text-foreground">How it works</a>
+          <a href="/pricing" className="transition-colors hover:text-foreground">Pricing</a>
           <a href="/download" className="transition-colors hover:text-foreground">Get the app</a>
           <a href="/about" className="transition-colors hover:text-foreground">About</a>
           <a href="/accessibility" className="transition-colors hover:text-foreground">Accessibility</a>
@@ -40,7 +41,7 @@ export function SiteFooter() {
           <p className="mt-4 max-w-xs text-sm text-muted-foreground">Real-time speech, subtitles and translation for the places where people gather.</p>
         </div>
         {[
-          ["Product", [["Start listening", "/app/listen"], ["Join with a code", "/join"], ["Android app", "/download"], ["Developer API", "/app/developers"], ["Languages", "/app/languages"], ["Help centre", "/app/help"]]],
+          ["Product", [["Pricing", "/pricing"], ["Start listening", "/app/listen"], ["Join with a code", "/join"], ["Android app", "/download"], ["Developer API", "/app/developers"], ["Languages", "/app/languages"], ["Help centre", "/app/help"]]],
           ["Account", [["Sign in", "/login"], ["Create account", "/signup"], ["Reset password", "/forgot-password"]]],
           ["Company", [["About", "/about"], ["Contact", "/contact"], ["Accessibility", "/accessibility"], ["Privacy", "/privacy"], ["Terms", "/terms"], ["Photo credits", "/credits"]]],
         ].map(([h, links]) => (

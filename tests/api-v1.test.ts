@@ -193,5 +193,5 @@ describe("Public API /v1", () => {
       globalThis.fetch = realFetch;
       delete process.env.SPITCH_API_KEY;
     }
-  });
+  }, 30_000); // usage is recorded in the real database, which can take a second or two from a slow connection
 });

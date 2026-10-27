@@ -24,6 +24,9 @@ const bodySchema = z.object({
 
 // Public endpoint that may call a paid provider: cap it per client.
 const allow = createRateLimiter(60, 60_000);
+// Visitors who are not signed in may try the home page demo: short sentences only, a few an hour.
+export const DEMO_MAX_CHARS = 200;
+const allowDemo = createRateLimiter(30, 60 * 60_000);
 
 // Prefix: /api
 async function translateRoutes(app: FastifyInstance) {
@@ -57,8 +60,11 @@ async function translateRoutes(app: FastifyInstance) {
     } else if (!row && billingEnforced()) {
       // Translating for yourself, with no live session: it comes out of your own time.
       const me = (await auth.api.getSession({ headers: fromNodeHeaders(req.headers) }))?.user;
-      if (!me) return res.code(401).send({ error: "Sign in to translate.", code: "SIGN_IN_REQUIRED" });
-      if (!(await soloCharge(me.id, audioSeconds(text), ["captions"]))) {
+      if (!me) {
+        // Not signed in: only the short home page demo, and only a few an hour.
+        if (text.length > DEMO_MAX_CHARS) return res.code(401).send({ error: "Sign in to translate longer text.", code: "SIGN_IN_REQUIRED" });
+        if (!allowDemo(req.ip)) return res.code(429).send({ error: "That is the demo limit for now. Create a free account to keep going.", code: "DEMO_LIMIT" });
+      } else if (!(await soloCharge(me.id, audioSeconds(text), ["captions"]))) {
         return res.code(402).send({ error: "You have no translation time left. Buy hours to carry on.", code: "OUT_OF_TIME" });
       }
     }
