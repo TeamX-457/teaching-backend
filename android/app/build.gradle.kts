@@ -13,8 +13,8 @@ android {
         applicationId = "app.voiceverse"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     // One fixed key for every build, so a new APK installs over the old one. In CI the key comes from GitHub

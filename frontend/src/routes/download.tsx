@@ -100,7 +100,7 @@ function DownloadPage() {
               {copied ? <><Check className="mr-2 h-4 w-4" /> Link copied</> : <><Copy className="mr-2 h-4 w-4" /> Copy link</>}
             </Button>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">Version 1.1.0 · Android 8.0 or newer · 16 MB</p>
+          <p className="mt-3 text-xs text-muted-foreground">Version 1.2.0 · Android 8.0 or newer · 16 MB</p>
           <p className="mt-4 break-all rounded-lg bg-muted px-3 py-2 font-mono text-xs text-muted-foreground" data-testid="apk-url">{href}</p>
         </section>
 
