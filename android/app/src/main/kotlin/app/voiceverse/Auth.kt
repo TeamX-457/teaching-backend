@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -131,16 +132,16 @@ fun AuthScreen(api: Api, onDone: (AuthUser) -> Unit) {
     }
 
     if (forgot) {
-        AlertDialog(
-            onDismissRequest = { forgot = false },
-            title = { Text("Reset your password") },
-            text = {
-                Text(
-                    "Voice Verse can't send email just now. Please contact the administrator of your organisation to have your " +
-                        "password reset, or create a new account with a different email address.",
+        // The reset page on the website emails a one-time link (the old "ask your administrator" dialog is gone).
+        val context = androidx.compose.ui.platform.LocalContext.current
+        LaunchedEffect(Unit) {
+            runCatching {
+                context.startActivity(
+                    android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://voiceverse-app.vercel.app/forgot-password"))
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
-            },
-            confirmButton = { TextButton({ forgot = false }) { Text("OK") } },
-        )
+            }
+            forgot = false
+        }
     }
 }
