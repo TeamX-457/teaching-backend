@@ -113,6 +113,11 @@ export const api = {
     signUp: (b: { name: string; email: string; password: string; role: "educator" | "student" }) =>
       request<{ user: AuthUser }>("/api/auth/sign-up/email", { method: "POST", body: b }),
     signOut: () => request<unknown>("/api/auth/sign-out", { method: "POST", body: {} }),
+    /** Emails a one-time link that opens redirectTo?token=... (the answer is the same whether or not the address has an account). */
+    requestPasswordReset: (email: string, redirectTo: string) =>
+      request<unknown>("/api/auth/request-password-reset", { method: "POST", body: { email, redirectTo } }),
+    resetPassword: (token: string, newPassword: string) =>
+      request<unknown>("/api/auth/reset-password", { method: "POST", body: { token, newPassword } }),
   },
 
   billing: {

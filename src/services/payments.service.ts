@@ -2,7 +2,8 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/config/db/db";
 import { resolvePlan, sellable, type Plan } from "@/config/pricing";
 import { grantForPayment, type BillingStore } from "@/services/billing.service";
-import { payments } from "@/models/schema";
+import { payments, user as users } from "@/models/schema";
+import { mailEnabled, sendReceipt } from "@/lib/mailer";
 import { APP_CODE, isOurs, makeReference, paystackMetadata } from "@/services/paystack.naming";
 import {
   PaystackError,
@@ -99,6 +100,24 @@ export async function createCheckout(
   }
 }
 
+export type EmailLookup = (userId: string) => Promise<string | undefined>;
+
+const emailFromDb: EmailLookup = async (userId) => {
+  const [row] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  return row?.email;
+};
+
+/** The receipt email. Best effort: a mail problem must never undo or hide a payment that already succeeded. */
+async function emailReceipt(payment: PaymentRow, emailOf: EmailLookup = emailFromDb): Promise<void> {
+  try {
+    if (!payment.userId || !mailEnabled()) return;
+    const to = await emailOf(payment.userId);
+    if (to) await sendReceipt(to, resolvePlan(payment.planId)?.name ?? "your Voice Verse plan", payment.amountKobo, payment.reference);
+  } catch (err) {
+    console.error("Could not prepare the receipt for", payment.reference, (err as Error).message);
+  }
+}
+
 /**
  * Asks Paystack what really happened to a payment and records it. Safe to call any number of times, from the
  * return page and from the webhook: the amount and currency must match what we asked for, and a paid payment is
@@ -106,7 +125,7 @@ export async function createCheckout(
  */
 export async function settle(
   reference: string,
-  deps: { store?: PaymentStore; verify?: (ref: string) => Promise<PaystackTransaction>; billing?: BillingStore } = {},
+  deps: { store?: PaymentStore; verify?: (ref: string) => Promise<PaystackTransaction>; billing?: BillingStore; emailOf?: EmailLookup } = {},
 ): Promise<PaymentRow | null> {
   if (!isOurs(reference)) return null;
   const store = deps.store ?? dbStore;
@@ -130,7 +149,10 @@ export async function settle(
       paidAt: tx.paid_at ? new Date(tx.paid_at) : new Date(),
       gatewayResponse: tx.gateway_response ?? null,
     });
-    if (first) await (fulfilments[first.planId] ?? defaultFulfilment(deps.billing))(first);
+    if (first) {
+      await (fulfilments[first.planId] ?? defaultFulfilment(deps.billing))(first);
+      await emailReceipt(first, deps.emailOf); // only on the one call that moved it to paid, so exactly once
+    }
     return first ?? (await store.byReference(reference)) ?? row;
   }
   if (tx.status === "failed" || tx.status === "reversed") {
@@ -143,7 +165,7 @@ export async function settle(
 /** A Paystack webhook event. Events for other products on the shared account are ignored. */
 export async function handleWebhookEvent(
   event: { event?: string; data?: { reference?: string; transaction_reference?: string } },
-  deps: { store?: PaymentStore; verify?: (ref: string) => Promise<PaystackTransaction>; billing?: BillingStore } = {},
+  deps: { store?: PaymentStore; verify?: (ref: string) => Promise<PaystackTransaction>; billing?: BillingStore; emailOf?: EmailLookup } = {},
 ): Promise<{ handled: boolean; reason?: string }> {
   const store = deps.store ?? dbStore;
   const reference = event.data?.reference ?? event.data?.transaction_reference;
